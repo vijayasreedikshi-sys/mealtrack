@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, status_badge, meal_chip, empty_state with context %}
+{% block title %}Seller Dashboard{% endblock %}
+{% block page_title %}Cooking Requirements{% endblock %}
+{% block page_sub %}{{ selected|fdate("%A, %d %B %Y") }}{% endblock %}
+{% block content %}
+<form class="d-flex gap-2 align-items-center mb-3" method="get">
+  <input class="form-control form-control-sm" type="date" name="date" value="{{ selected.isoformat() }}" onchange="this.form.submit()" style="max-width:180px">
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('seller.dashboard') }}">Today</a>
+</form>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="big-total h-100 d-flex flex-column justify-content-center">
+      <div class="label mb-2">Total cooking quantity</div>
+      <div class="num">{{ total }}</div>
+      <div class="label mt-2">portions across {{ rows|length }} assigned meal{{ "s" if rows|length != 1 }}</div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card table-card h-100">
+      <div class="card-header"><h2>{{ icon("chef-hat") }} Assigned meals</h2></div>
+      {% if rows %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Meal</th><th>Food</th><th>Count</th><th class="text-end">Required</th><th class="text-end">Prepared</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for r in rows %}
+            <tr>
+              <td>{{ meal_chip(r.meal_name) }}</td>
+              <td class="fw-semibold">{{ r.food_name }}</td>
+              <td>{{ status_badge("final" if r.final else "open") }}</td>
+              <td class="text-end fw-bold fs-5">{{ r.total_qty }}</td>
+              <td class="text-end">{{ r.prepared if r.prepared is not none else "—" }}</td>
+              <td>{{ status_badge(r.prep_status) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+          <tfoot><tr><td colspan="3">Total</td><td class="text-end text-green fs-5">{{ total }}</td><td colspan="2"></td></tr></tfoot>
+        </table>
+      </div>
+      {% else %}
+        {{ empty_state("calendar-x", "No meals assigned to you on this date") }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+<p class="small text-muted mt-3 mb-0">"Open" totals can still change until the meal's cutoff. "Final" totals are locked. Preparation updates arrive in Milestone 3.</p>
+{% endblock %}

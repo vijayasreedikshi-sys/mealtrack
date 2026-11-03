@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, status_badge, stat_card, meal_chip, empty_state with context %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Hello, {{ g.user.name.split()[0] }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('customer.submit') }}" class="btn btn-primary btn-sm d-none d-md-inline-flex">{{ icon("clipboard-pen-line") }} Submit count</a>
+{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    {{ stat_card("list-checks", "This week submitted", week_submitted ~ " / " ~ week_total_meals,
+                 "meals counted (0 counts too)") }}
+  </div>
+  <div class="col-6 col-xl-3">
+    {{ stat_card("utensils", "My portions this week", week_portions, "from submitted counts", "dark") }}
+  </div>
+  <div class="col-6 col-xl-3">
+    {{ stat_card("clock-alert", "Awaiting your count", open_unsubmitted, "open meals this week", "grey") }}
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-icon">{{ icon("timer") }}</div>
+        <div class="min-w-0">
+          <div class="stat-label">Next cutoff</div>
+          {% if next_deadline %}
+            <div class="stat-value countdown" data-countdown="{{ next_deadline.cutoff_time|iso }}">—</div>
+            <div class="stat-sub text-truncate">{{ next_deadline.meal_name }} · {{ next_deadline.schedule_date|fdate("%a %d %b") }}</div>
+          {% else %}
+            <div class="stat-value">—</div><div class="stat-sub">No open meals</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="card h-100">
+      <div class="card-header">
+        <h2>{{ icon("calendar-check") }} Today's meals · {{ today|fdate("%A, %d %b") }}</h2>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('customer.submit', date=today.isoformat()) }}">Edit today's count</a>
+      </div>
+      <div class="card-body">
+        {% if today_rows %}
+        <div class="row g-3">
+          {% for r in today_rows %}
+          <div class="col-md-4">
+            <div class="meal-card {{ 'is-submitted' if r.has_value }}">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                {{ meal_chip(r.meal_name) }} {{ status_badge(r.status) }}
+              </div>
+              <div class="food">{{ r.food_name }}</div>
+              <div class="small text-muted mb-3">{{ r.description or "" }}</div>
+              <div class="d-flex justify-content-between align-items-end">
+                <div>
+                  <div class="small-caps">My quantity</div>
+                  <div class="qty">{{ r.quantity if r.has_value else "–" }}</div>
+                </div>
+                <div class="text-end small text-muted">
+                  {% if r.is_open %}Closes in<br><span class="countdown text-black" data-countdown="{{ r.cutoff_time|iso }}"></span>
+                  {% else %}Closed<br>{{ r.cutoff_time|ftime }}{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          {{ empty_state("calendar-x", "No menu published for today", "Check the weekly schedule for upcoming meals.") }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card h-100">
+      <div class="card-header"><h2>{{ icon("clipboard-list") }} Needs your count</h2></div>
+      {% if upcoming_pending %}
+      <ul class="list-group list-group-flush">
+        {% for p in upcoming_pending %}
+        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+          <div>
+            <div class="fw-semibold">{{ p.meal_name }} · {{ p.food_name }}</div>
+            <div class="small text-muted">{{ p.schedule_date|fdate("%a %d %b") }} · closes {{ p.cutoff_time|fdt("%a %I:%M %p") }}</div>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('customer.submit', date=p.schedule_date.isoformat()) }}">Enter</a>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="card-body pt-2">
+        <a class="btn btn-primary w-100" href="{{ url_for('customer.submit', view='week', date=week_start.isoformat()) }}">{{ icon("calendar-range") }} Submit for the whole week</a>
+      </div>
+      {% else %}
+        {{ empty_state("circle-check", "You're all set", "Every open meal has your count.") }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-info mt-4 mb-0">
+  {{ icon("info") }}
+  <div>Enter <strong>0</strong> for meals you don't need. A 0 still counts as a submission, so the kitchen knows not to cook for you. You can change your count until the meal's cutoff time.</div>
+</div>
+{% endblock %}

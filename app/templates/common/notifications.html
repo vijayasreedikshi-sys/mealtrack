@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, empty_state, pagination with context %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_sub %}{{ total }} notification{{ "s" if total != 1 }} · {{ unread_count }} unread{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>{{ icon("bell") }} All notifications</h2>
+    {% if unread_count %}
+    <form method="post" action="{{ url_for('auth.notifications_read_all') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">{{ icon("check-check") }} Mark all as read</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if items %}
+  <ul class="list-group list-group-flush">
+    {% for n in items %}
+    <li class="list-group-item d-flex gap-3 align-items-start py-3 {{ 'bg-green-soft' if not n.is_read }}">
+      <span class="stat-icon {{ '' if not n.is_read else 'grey' }}" style="width:2.2rem;height:2.2rem">{{ icon("bell-dot" if not n.is_read else "bell") }}</span>
+      <div class="flex-grow-1 min-w-0">
+        <div class="{{ 'fw-semibold' if not n.is_read }}">{{ n.message }}</div>
+        <div class="small text-muted">{{ n.created_at|fdt }} · {{ n.created_at|ago }}</div>
+      </div>
+      {% if n.link or not n.is_read %}
+      <form method="post" action="{{ url_for('auth.notification_open', nid=n.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">{{ "Open" if n.link else "Mark read" }}</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    {{ empty_state("bell-off", "No notifications yet", "Deadline reminders and confirmations will appear here.") }}
+  {% endif %}
+</div>
+{{ pagination(page, pages, "auth.notifications_page") }}
+{% endblock %}

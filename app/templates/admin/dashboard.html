@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, stat_card, meal_chip, empty_state with context %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">{{ stat_card("users", "Active customers", active_customers, "registered & active") }}</div>
+  <div class="col-6 col-xl-3">{{ stat_card("clipboard-check", "Today's submissions", subs.submitted, "of " ~ subs.expected ~ " expected", "dark") }}</div>
+  <div class="col-6 col-xl-3">{{ stat_card("hourglass", "Pending today", subs.pending, "customer-meal counts missing", "grey") }}</div>
+  <div class="col-6 col-xl-3">{{ stat_card("utensils-crossed", "Today's total portions", meal_totals.get("Total", 0), "all meals") }}</div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header"><h2>{{ icon("chef-hat") }} Today's meal-wise totals · {{ today|fdate("%A, %d %b") }}</h2></div>
+  {% if today_meals %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Meal</th><th>Food</th><th>Cutoff</th><th class="text-end">Submitted</th><th class="text-end">Pending</th><th class="text-end">Required qty</th></tr></thead>
+      <tbody>
+      {% for r in today_meals %}
+        <tr>
+          <td>{{ meal_chip(r.meal_name) }}</td>
+          <td class="fw-semibold">{{ r.food_name }}</td>
+          <td class="small">{{ r.cutoff_time|fdt("%a %I:%M %p") }}</td>
+          <td class="text-end">{{ r.submitters }}</td>
+          <td class="text-end text-muted">{{ r.pending }}</td>
+          <td class="text-end fw-bold fs-5">{{ r.total_qty }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot><tr><td colspan="5">Total</td><td class="text-end text-green fs-5">{{ meal_totals.get("Total", 0) }}</td></tr></tfoot>
+    </table>
+  </div>
+  {% else %}
+    {{ empty_state("calendar-x", "No schedule published for today") }}
+  {% endif %}
+</div>
+<p class="small text-muted mt-3 mb-0">Totals include only submitted and locked counts from active customers, and 0 counts as a submission. Schedule management, customers, sellers, analytics and reports arrive in Milestone 2.</p>
+{% endblock %}

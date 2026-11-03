@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, status_badge, meal_chip, empty_state with context %}
+{% block title %}Submit Food Count{% endblock %}
+{% block page_title %}Submit Food Count{% endblock %}
+{% block page_sub %}{% if view == "week" %}Week of {{ start|fdate("%d %b") }} – {{ end|fdate("%d %b %Y") }}{% else %}{{ selected|fdate("%A, %d %B %Y") }}{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+  <div class="segmented">
+    <a class="{{ 'active' if view == 'day' }}" href="{{ url_for('customer.submit', date=selected.isoformat(), view='day') }}">Day</a>
+    <a class="{{ 'active' if view == 'week' }}" href="{{ url_for('customer.submit', date=selected.isoformat(), view='week') }}">Week</a>
+  </div>
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="hidden" name="view" value="{{ view }}">
+    <a class="btn btn-outline-secondary btn-sm btn-icon" href="{{ url_for('customer.submit', date=prev_date.isoformat(), view=view) }}" aria-label="Previous">{{ icon("chevron-left") }}</a>
+    <input class="form-control form-control-sm" type="date" name="date" value="{{ selected.isoformat() }}" onchange="this.form.submit()" style="max-width:170px">
+    <a class="btn btn-outline-secondary btn-sm btn-icon" href="{{ url_for('customer.submit', date=next_date.isoformat(), view=view) }}" aria-label="Next">{{ icon("chevron-right") }}</a>
+  </form>
+</div>
+
+{% if grouped %}
+<form id="countForm" method="post" action="{{ url_for('customer.submit') }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="date" value="{{ selected.isoformat() }}">
+
+  <div class="card">
+    {% if any_open %}
+    <div class="card-header bg-grey-soft">
+      <div class="small text-muted">{{ icon("info", "me-1") }} Quick fill applies only to meals that are still open.</div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="last">{{ icon("copy") }} Copy last week</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="one">{{ icon("plus") }} All 1</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="zero">{{ icon("circle-off") }} All 0</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="clear">{{ icon("rotate-ccw") }} Reset</button>
+      </div>
+    </div>
+    {% endif %}
+
+    {% for d, rows in grouped.items() %}
+    <div class="{{ 'border-top' if not loop.first }}" id="day-{{ d.isoformat() }}">
+      <div class="d-flex justify-content-between align-items-center px-3 px-md-4 pt-3">
+        <div>
+          <div class="fw-semibold">{{ d|fdate("%A, %d %b") }}{% if d == today %} <span class="badge bg-green-soft text-green ms-1">Today</span>{% endif %}</div>
+        </div>
+        <div class="small text-muted">Day total: <strong class="text-black" data-day-total="{{ d.isoformat() }}">0</strong></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Meal</th><th>Scheduled food</th><th class="d-none d-md-table-cell">Cutoff</th><th>Status</th><th class="text-end">Required quantity</th></tr>
+          </thead>
+          <tbody>
+          {% for r in rows %}
+            {% set current = r.quantity if r.has_value else "" %}
+            <tr>
+              <td>{{ meal_chip(r.meal_name) }}</td>
+              <td>
+                <div class="fw-semibold">{{ r.food_name }}</div>
+                <div class="small text-muted">{{ r.description or "" }}{% if r.price %} · ₹{{ "%.0f"|format(r.price) }}/{{ r.unit }}{% endif %}</div>
+                {% if r.notes %}<div class="small text-green">{{ r.notes }}</div>{% endif %}
+              </td>
+              <td class="d-none d-md-table-cell small">
+                {{ r.cutoff_time|fdt("%a %d %b, %I:%M %p") }}
+                {% if r.is_open %}<div class="text-muted">in <span class="countdown" data-countdown="{{ r.cutoff_time|iso }}"></span></div>{% endif %}
+              </td>
+              <td>{{ status_badge(r.status) }}</td>
+              <td class="text-end">
+                <div class="qty-stepper">
+                  <button type="button" data-step="-1" {{ "disabled" if not r.is_open }} aria-label="Decrease">{{ icon("minus") }}</button>
+                  <input class="qty-input" type="number" inputmode="numeric" min="0" max="{{ max_qty }}" step="1"
+                         name="qty_{{ r.id }}" value="{{ current }}" placeholder="–"
+                         data-original="{{ current }}" data-day="{{ d.isoformat() }}"
+                         data-last="{{ r.last_week_qty if r.last_week_qty is not none else '' }}"
+                         aria-label="{{ r.meal_name }} quantity" {{ "disabled" if not r.is_open }}>
+                  <button type="button" data-step="1" {{ "disabled" if not r.is_open }} aria-label="Increase">{{ icon("plus") }}</button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="submit-bar">
+      <span class="total-pill">Total portions <strong id="liveTotal">0</strong></span>
+      <span class="small text-muted" id="changedCount"></span>
+      <div class="ms-auto d-flex gap-2">
+        {% if any_open %}
+        <button class="btn btn-primary" id="submitCounts" type="submit">{{ icon("send") }} Submit count</button>
+        {% else %}
+        <span class="status status-locked">All meals shown are closed</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+<p class="small text-muted mt-3 mb-0">
+  Leave a meal blank if you haven't decided yet (it stays <em>Pending</em>). Enter <strong>0</strong> if you don't need it.
+  You can update your count as many times as you like until the cutoff, after which it is <em>Locked</em>.
+</p>
+{% else %}
+  <div class="card">{{ empty_state("calendar-x", "No published menu for this " ~ view, "Try another date or check the weekly schedule.") }}</div>
+{% endif %}
+{% endblock %}

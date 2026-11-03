@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import icon, status_badge with context %}
+{% block title %}{{ "Edit" if food else "Add" }} Food Item{% endblock %}
+{% block page_title %}{{ "Edit food item" if food else "Add food item" }}{% endblock %}
+{% block page_sub %}<a href="{{ url_for('admin.food_items') }}" class="text-decoration-none">← Back to food items</a>{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><h2>{{ icon("utensils") }} {{ food.food_name if food else "New menu item" }}</h2>{% if food %}{{ status_badge(food.status) }}{% endif %}</div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" for="food_name">Food name <span class="text-green">*</span></label>
+            <input class="form-control" id="food_name" name="food_name" value="{{ form.food_name }}" required maxlength="100" placeholder="e.g. Masala Dosa" autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="2" maxlength="255" placeholder="e.g. Dosa with potato masala, sambar and chutney">{{ form.description }}</textarea>
+            <div class="form-text">Shown to customers on the schedule (max 255 characters).</div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="unit">Unit (one portion)</label>
+              <select class="form-select" id="unit" name="unit">
+                {% for u in units %}<option value="{{ u }}" {{ "selected" if form.unit == u }}>{{ u|title }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="price">Price per portion <span class="text-muted fw-normal">(optional)</span></label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input class="form-control" id="price" name="price" type="number" min="0" max="99999.99" step="0.01" value="{{ form.price }}" placeholder="0.00">
+              </div>
+              <div class="form-text">Customers can see it but can't change it. Used for cost estimates.</div>
+            </div>
+          </div>
+          <div class="mb-4">
+            <span class="form-label d-block">Status</span>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="status" id="st_active" value="active" {{ "checked" if form.status != "inactive" }}>
+              <label class="form-check-label" for="st_active">Active, available for schedules</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="status" id="st_inactive" value="inactive" {{ "checked" if form.status == "inactive" }}>
+              <label class="form-check-label" for="st_inactive">Inactive</label>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit" name="next_action" value="save">{{ icon("save") }} {{ "Save changes" if food else "Add food item" }}</button>
+            {% if not food %}
+            <button class="btn btn-outline-primary" type="submit" name="next_action" value="add_another">{{ icon("plus") }} Save &amp; add another</button>
+            {% endif %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('admin.food_items') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    {% if food %}
+    <div class="card">
+      <div class="card-header"><h2>{{ icon("calendar-days") }} Upcoming schedules</h2></div>
+      {% if usage %}
+      <ul class="list-group list-group-flush">
+        {% for u in usage %}<li class="list-group-item d-flex justify-content-between"><span>{{ u.schedule_date|fdate("%a, %d %b") }}</span><span class="text-muted">{{ u.meal_name }}</span></li>{% endfor %}
+      </ul>
+      <div class="card-body small text-muted pt-2">Changes to the name or description appear on these meals immediately.</div>
+      {% else %}
+      <div class="card-body small text-muted">This item isn't scheduled for any upcoming meal.</div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="card card-muted">
+      <div class="card-body">
+        <h2 class="h6">{{ icon("lightbulb", "me-1") }} Tips</h2>
+        <ul class="small text-muted mb-0 ps-3">
+          <li>Use one item per dish customers count separately (e.g. "Idly" and "Vada").</li>
+          <li>The unit tells customers what one portion means: 1 plate, 1 piece and so on.</li>
+          <li>New items appear when the admin builds daily and weekly schedules.</li>
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
