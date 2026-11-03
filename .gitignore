@@ -1,6 +1,23 @@
+# Secrets – never commit (contains DB password and SECRET_KEY)
 .env
+
+# Python
 venv/
+.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.egg-info/
+
+# Exports / logs
+*.log
+exports/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Flask instance folder
 instance/
