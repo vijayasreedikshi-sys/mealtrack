@@ -16,7 +16,7 @@ public class DbOptions
 
 public class AppOptions
 {
-    public int MaxQtyPerMeal { get; set; } = 20;              // must match CHECK constraint in schema.sql
+    public int MaxQtyPerMeal { get; set; } = 1;               // one person = 1 portion per meal per day (matches CHECK in schema.sql)
     public int ReminderHoursBeforeCutoff { get; set; } = 2;   // deadline reminder window
     public int SweepIntervalSeconds { get; set; } = 60;       // how often the lock/notify sweep runs
     public int PasswordResetMinutes { get; set; } = 30;

@@ -92,7 +92,7 @@ CREATE TABLE customer_meal_counts (
     CONSTRAINT uq_count_customer_schedule UNIQUE (customer_id, food_schedule_id),
     CONSTRAINT fk_count_customer FOREIGN KEY (customer_id)      REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_count_schedule FOREIGN KEY (food_schedule_id) REFERENCES food_schedule(id) ON DELETE CASCADE,
-    CONSTRAINT chk_count_qty CHECK (quantity BETWEEN 0 AND 20),
+    CONSTRAINT chk_count_qty CHECK (quantity BETWEEN 0 AND 1),   -- 1 = eating, 0 = not eating (one portion per person per meal)
     INDEX idx_count_schedule_status (food_schedule_id, submission_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

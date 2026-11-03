@@ -261,7 +261,9 @@ public class CustomerController(Db db, NotificationService notifications, IOptio
         if (rejected > 0)
             Flash("warning", $"{rejected} meal(s) were not saved because the cutoff time has passed.");
         if (invalid > 0)
-            Flash("danger", $"{invalid} value(s) were invalid. Enter a whole number from 0 to {maxQty}.");
+            Flash("danger", maxQty == 1
+                ? $"{invalid} value(s) were not saved. One person can have only 1 portion per meal: enter 1 if you will eat, or 0 if not."
+                : $"{invalid} value(s) were invalid. Enter a whole number from 0 to {maxQty}.");
         if (submitted.Count == 0 && unchanged == 0 && rejected == 0 && invalid == 0)
             Flash("info", "Enter a quantity (0 if you don't need the meal) for at least one meal.");
 

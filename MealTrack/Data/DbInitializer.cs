@@ -259,7 +259,7 @@ public static class DbInitializer
             foreach (var (cid, _) in customerIds)
             {
                 if (rnd.NextDouble() > participation) continue; // no submission (pending / missed)
-                var qty = WeightedPick(rnd, [0, 1, 2, 3], [18, 55, 22, 5]);
+                var qty = WeightedPick(rnd, [0, 1], [22, 78]);
                 var status = closed ? "locked" : "submitted";
                 var submittedAt = cutoff.AddHours(-rnd.Next(2, 31));
                 if (submittedAt > now) submittedAt = now;

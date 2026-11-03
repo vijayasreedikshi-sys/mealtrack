@@ -35,7 +35,7 @@ public class AttendanceTests(TestApp app)
     {
         var s = await TodayAsync("Breakfast");
         var customer = await app.AddUserAsync("customer");
-        await app.AddCountAsync(customer, s, 2, "locked");
+        await app.AddCountAsync(customer, s, 1, "locked");
         var client = await app.LoginAsync(customer);
         var token = await TokenAsync(s);
 
@@ -125,8 +125,8 @@ public class AttendanceTests(TestApp app)
         var s = await app.AddScheduleAsync(app.PastDate(), "Lunch");
         int came = await app.AddUserAsync("customer"), noShow = await app.AddUserAsync("customer"),
             zero = await app.AddUserAsync("customer"), walkIn = await app.AddUserAsync("customer");
-        await app.AddCountAsync(came, s, 2, "locked");
-        await app.AddCountAsync(noShow, s, 3, "locked");
+        await app.AddCountAsync(came, s, 1, "locked");
+        await app.AddCountAsync(noShow, s, 1, "locked");
         await app.AddCountAsync(zero, s, 0, "locked"); // said "not eating" – neither applied nor a no-show
         var svc = Attendance;
         await svc.CheckInAsync(s, came, "qr", null, DateTime.Now);
@@ -134,13 +134,13 @@ public class AttendanceTests(TestApp app)
 
         var sum = await svc.SummaryAsync(s);
         Assert.Equal(2, sum.AppliedCustomers);
-        Assert.Equal(5, sum.AppliedPortions);
+        Assert.Equal(2, sum.AppliedPortions);
         Assert.Equal(1, sum.Came);
         Assert.Equal(1, sum.NoShows);
-        Assert.Equal(3, sum.NoShowPortions);
+        Assert.Equal(1, sum.NoShowPortions);
         Assert.Equal(1, sum.WalkIns);
 
         var row = (await svc.ReportRowsAsync(DateTime.Today.AddYears(-1), DateTime.Today)).Single(r => r.ScheduleId == s);
-        Assert.Equal((2, 1, 3, 1), (row.Applied, row.Came, row.NoShowPortions, row.WalkIns));
+        Assert.Equal((2, 1, 1, 1), (row.Applied, row.Came, row.NoShowPortions, row.WalkIns));
     }
 }

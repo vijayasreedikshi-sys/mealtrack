@@ -34,8 +34,8 @@
       <div class="small text-muted">@Ui.Icon("info", "me-1") Quick fill applies only to meals that are still open.</div>
       <div class="d-flex gap-2 flex-wrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="last">@Ui.Icon("copy") Copy last week</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="one">@Ui.Icon("plus") All 1</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="zero">@Ui.Icon("circle-off") All 0</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="one">@Ui.Icon("plus") Eat all (1)</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="zero">@Ui.Icon("circle-off") Skip all (0)</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="clear">@Ui.Icon("rotate-ccw") Reset</button>
       </div>
     </div>
@@ -56,7 +56,7 @@
       <div class="table-responsive">
         <table class="table">
           <thead>
-            <tr><th>Meal</th><th>Scheduled food</th><th class="d-none d-md-table-cell">Cutoff</th><th>Status</th><th class="text-end">Required quantity</th></tr>
+            <tr><th>Meal</th><th>Scheduled food</th><th class="d-none d-md-table-cell">Cutoff</th><th>Status</th><th class="text-end">@(Model.MaxQty == 1 ? "Eating? (1 = yes, 0 = no)" : "Required quantity")</th></tr>
           </thead>
           <tbody>
           @foreach (var r in group)
@@ -80,7 +80,7 @@
                   <input class="qty-input" type="number" inputmode="numeric" min="0" max="@Model.MaxQty" step="1"
                          name="@($"qty_{r.Id}")" value="@current" placeholder="–"
                          data-original="@current" data-day="@iso"
-                         data-last="@(r.LastWeekQty?.ToString() ?? "")"
+                         data-last="@(r.LastWeekQty is { } lw ? Math.Min(lw, Model.MaxQty).ToString() : "")"
                          aria-label="@r.MealName quantity" disabled="@(!r.IsOpen)">
                   <button type="button" data-step="1" disabled="@(!r.IsOpen)" aria-label="Increase">@Ui.Icon("plus")</button>
                 </div>
@@ -111,7 +111,8 @@
   </div>
 </form>
 <p class="small text-muted mt-3 mb-0">
-  Leave a meal blank if you haven't decided yet (it stays <em>Pending</em>). Enter <strong>0</strong> if you don't need it.
+  One person can take <strong>only 1 portion</strong> of each meal per day. Enter <strong>1</strong> if you will eat and <strong>0</strong> if you won't.
+  Leave a meal blank if you haven't decided yet (it stays <em>Pending</em>).
   You can update your count as many times as you like until the cutoff, after which it is <em>Locked</em>.
 </p>
 }

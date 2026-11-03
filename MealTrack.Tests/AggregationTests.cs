@@ -10,19 +10,21 @@ public class AggregationTests(TestApp app)
     private CountService Counts => app.Services.CreateScope().ServiceProvider.GetRequiredService<CountService>();
 
     [Fact]
-    public async Task Spec_example_five_customers_totals_6_4_4_equals_14()
+    public async Task Seven_customers_one_portion_each_totals_6_4_4_equals_14()
     {
         var day = app.NextDate();
         var b = await app.AddScheduleAsync(day, "Breakfast");
         var l = await app.AddScheduleAsync(day, "Lunch");
         var d = await app.AddScheduleAsync(day, "Dinner");
-        int[][] table = // customer -> (breakfast, lunch, dinner)
+        int[][] table = // customer -> (breakfast, lunch, dinner); max 1 portion per meal
         [
-            [2, 1, 1],
-            [1, 1, 0],
-            [0, 0, 1],
-            [2, 1, 1],
             [1, 1, 1],
+            [1, 1, 1],
+            [1, 1, 0],
+            [1, 0, 1],
+            [1, 0, 1],
+            [1, 1, 0],
+            [0, 0, 0],
         ];
         foreach (var q in table)
         {
@@ -37,7 +39,7 @@ public class AggregationTests(TestApp app)
         Assert.Equal(4, totals["Lunch"]);
         Assert.Equal(4, totals["Dinner"]);
         Assert.Equal(14, totals["Total"]);
-        Assert.All(rows, r => Assert.Equal(5, r.Submitters)); // a 0 still counts as a submission
+        Assert.All(rows, r => Assert.Equal(7, r.Submitters)); // a 0 still counts as a submission
     }
 
     [Fact]
@@ -46,11 +48,12 @@ public class AggregationTests(TestApp app)
         var day = app.NextDate();
         var s = await app.AddScheduleAsync(day, "Lunch");
         await app.AddCountAsync(await app.AddUserAsync("customer"), s, 0);
-        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 3);
+        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1);
+        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1);
         var row = (await Counts.ScheduleTotalsAsync(day, day))
             .Single(r => r.ScheduleId == s);
-        Assert.Equal(3, row.TotalQty);
-        Assert.Equal(2, row.Submitters);
+        Assert.Equal(2, row.TotalQty);
+        Assert.Equal(3, row.Submitters);
         Assert.Equal(1, row.ZeroCount);
     }
 
@@ -58,12 +61,12 @@ public class AggregationTests(TestApp app)
     public async Task Pending_cancelled_and_inactive_customers_are_excluded()
     {
         var s = await app.AddScheduleAsync(app.NextDate(), "Dinner");
-        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 2);                    // counted
-        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 5, "pending");         // draft
-        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 4, "cancelled");
-        await app.AddCountAsync(await app.AddUserAsync("customer", "inactive"), s, 7);        // inactive
+        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1);                    // counted
+        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1, "pending");         // draft
+        await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1, "cancelled");
+        await app.AddCountAsync(await app.AddUserAsync("customer", "inactive"), s, 1);        // inactive
         await app.AddCountAsync(await app.AddUserAsync("customer"), s, 1, "locked");          // counted
-        Assert.Equal(3, await Counts.ScheduleTotalAsync(s));
+        Assert.Equal(2, await Counts.ScheduleTotalAsync(s));
         Assert.Equal(2, (await Counts.CustomerBreakdownAsync(s)).Count);
     }
 

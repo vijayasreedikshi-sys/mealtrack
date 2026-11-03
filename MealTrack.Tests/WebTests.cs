@@ -31,15 +31,41 @@ public class WebTests(TestApp app)
         var customer = await app.AddUserAsync("customer");
         var client = await app.LoginAsync(customer);
 
-        Assert.Equal(HttpStatusCode.Redirect, (await SubmitAsync(client, day, s, 2)).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await SubmitAsync(client, day, s, 3)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SubmitAsync(client, day, s, 1)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SubmitAsync(client, day, s, 0)).StatusCode);
 
         Assert.Equal(1, await RowsAsync(customer, s));
         using var scope = app.Services.CreateScope();
-        Assert.Equal(3, await scope.ServiceProvider.GetRequiredService<CountService>().ScheduleTotalAsync(s));
+        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<CountService>().ScheduleTotalAsync(s));
         Assert.Equal(2, await app.Db.ScalarAsync<int>(
             "SELECT COUNT(*) FROM count_change_log l JOIN customer_meal_counts c ON c.id=l.count_id " +
             "WHERE c.customer_id=@customer AND c.food_schedule_id=@s", new { customer, s }));
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(5)]
+    public async Task More_than_one_portion_per_meal_is_rejected(int qty)
+    {
+        var day = app.NextDate();
+        var s = await app.AddScheduleAsync(day, "Dinner");
+        var customer = await app.AddUserAsync("customer");
+        var client = await app.LoginAsync(customer);
+
+        await SubmitAsync(client, day, s, 1);
+        await SubmitAsync(client, day, s, qty); // refused: one person, one portion
+
+        Assert.Equal(1, await RowsAsync(customer, s));
+        Assert.Equal(1, await app.Db.ScalarAsync<int>(
+            "SELECT quantity FROM customer_meal_counts WHERE customer_id=@customer AND food_schedule_id=@s", new { customer, s }));
+    }
+
+    [Fact]
+    public async Task Database_refuses_more_than_one_portion()
+    {
+        var s = await app.AddScheduleAsync(app.NextDate(), "Lunch");
+        var customer = await app.AddUserAsync("customer");
+        await Assert.ThrowsAnyAsync<Exception>(() => app.AddCountAsync(customer, s, 2));
     }
 
     [Fact]
