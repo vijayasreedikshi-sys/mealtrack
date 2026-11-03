@@ -1,0 +1,93 @@
+@model AdminDashboardVm
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var total = Model.MealTotals.GetValueOrDefault("Total");
+}
+@section TopbarActions {
+  <a href="/admin/schedules" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("calendar-days") Schedules</a>
+}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">@Ui.StatCard("users", "Active customers", Model.ActiveCustomers, "registered & active")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("clipboard-check", "Today's submissions", Model.Subs.Submitted, $"of {Model.Subs.Expected} expected", "dark")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("hourglass", "Pending today", Model.Subs.Pending, "customer-meal counts missing", "grey")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("utensils-crossed", "Today's total portions", total, "all meals")</div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-7">
+    <div class="card table-card h-100">
+      <div class="card-header">
+        <h2>@Ui.Icon("chef-hat") Today's meal-wise totals · @Fmt.Date(DateTime.Today, "dddd, dd MMM")</h2>
+        <a class="btn btn-sm btn-outline-secondary" href="/admin/counts">View counts</a>
+      </div>
+      @if (Model.TodayMeals.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Meal</th><th>Food</th><th>Cutoff</th><th class="text-end">Submitted</th><th class="text-end">Pending</th><th class="text-end">Required qty</th></tr></thead>
+          <tbody>
+          @foreach (var r in Model.TodayMeals)
+          {
+            <tr>
+              <td>@Ui.MealChip(r.MealName)</td>
+              <td class="fw-semibold">@r.FoodName</td>
+              <td class="small">@Fmt.Dt(r.CutoffTime, "ddd hh:mm tt") @Ui.StatusBadge(r.CutoffTime <= DateTime.Now ? "final" : "open")</td>
+              <td class="text-end">@r.Submitters</td>
+              <td class="text-end text-muted"><a class="text-reset" href="/admin/counts?tab=pending&meal=@r.MealTypeId">@r.Pending</a></td>
+              <td class="text-end fw-bold fs-5">@r.TotalQty</td>
+            </tr>
+          }
+          </tbody>
+          <tfoot><tr><td colspan="5">Total</td><td class="text-end text-green fs-5">@total</td></tr></tfoot>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar-x", "No schedule published for today")
+      }
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("chart-pie") Meal split · last 30 days</h2></div>
+      <div class="card-body"><div class="chart-box sm"><canvas data-chart="meal-split" data-src="/admin/api/meal-split?days=30"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-7">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("chart-column") Portions · last 7 days</h2></div>
+      <div class="card-body"><div class="chart-box"><canvas data-chart="consumption" data-src="/admin/api/consumption?days=7"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("trophy") Top foods · last 30 days</h2></div>
+      <div class="card-body"><div class="chart-box"><canvas data-chart="top-foods" data-src="/admin/api/top-foods?days=30"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("activity") Required vs prepared vs wasted · 14 days</h2></div>
+      <div class="card-body"><div class="chart-box"><canvas data-chart="preparation" data-src="/admin/api/preparation?days=14"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("leaf") Wastage % · 30 days</h2><a class="btn btn-sm btn-outline-secondary" href="/admin/reports?type=wastage">Report</a></div>
+      <div class="card-body"><div class="chart-box"><canvas data-chart="wastage" data-src="/admin/api/wastage?days=30"></canvas></div></div>
+    </div>
+  </div>
+</div>
+<p class="small text-muted mt-3 mb-0">Totals include only submitted and locked counts from active customers, and 0 counts as a submission. Wastage % = wasted ÷ prepared × 100.</p>
+
+@section Scripts {
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="~/js/charts.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,55 @@
+@model CutoffsVm
+@{
+    ViewData["Title"] = "Cutoff Times";
+    ViewData["PageTitle"] = "Manage Cutoff Times";
+}
+@section PageSub {Default deadline for each meal. Individual meals can override it on their edit page.}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <form class="card" method="post" asp-antiforgery="true">
+      <div class="card-header"><h2>@Ui.Icon("timer") Default cutoffs</h2></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Meal</th><th>Day</th><th>Time</th><th class="d-none d-md-table-cell">Example</th></tr></thead>
+          <tbody>
+          @foreach (var m in Model.MealTypes)
+          {
+            var example = MealTrack.Services.Cutoff.Compute(DateTime.Today.AddDays(1), m);
+            <tr>
+              <td>@Ui.MealChip(m.MealName)</td>
+              <td>
+                <select class="form-select form-select-sm" name="@($"offset_{m.Id}")" style="max-width:200px">
+                  <option value="0" selected="@(m.DefaultCutoffDayOffset == 0)">Same day</option>
+                  <option value="-1" selected="@(m.DefaultCutoffDayOffset == -1)">Previous day</option>
+                  <option value="-2" selected="@(m.DefaultCutoffDayOffset == -2)">2 days before</option>
+                </select>
+              </td>
+              <td><input class="form-control form-control-sm" type="time" name="@($"time_{m.Id}")" value="@m.DefaultCutoffTime.ToString(@"hh\:mm")" style="max-width:140px" required></td>
+              <td class="d-none d-md-table-cell small text-muted">@m.MealName on @Fmt.Date(example.Date.AddDays(-m.DefaultCutoffDayOffset), "ddd dd MMM") closes @Fmt.Dt(example, "ddd hh:mm tt")</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body border-top">
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="apply_upcoming" name="apply_upcoming" value="1">
+          <label class="form-check-label" for="apply_upcoming">Also apply to meals that are still open (only where the new cutoff is still in the future)</label>
+        </div>
+        <button class="btn btn-primary" type="submit">@Ui.Icon("save") Save cutoff times</button>
+      </div>
+    </form>
+  </div>
+  <div class="col-lg-4">
+    <div class="card card-muted">
+      <div class="card-body small text-muted">
+        <h2 class="h6 text-black">@Ui.Icon("info", "me-1") How cutoffs work</h2>
+        <ul class="ps-3 mb-0">
+          <li>Before the cutoff, customers can submit and change counts as often as they like.</li>
+          <li>At the cutoff, counts are locked automatically and the assigned sellers get the final total.</li>
+          <li>Customers who haven't submitted get a reminder 2 hours before the cutoff.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

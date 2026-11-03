@@ -11,34 +11,60 @@ calculated automatically, so they cook the right quantity and waste less.
 | **Admin** | Manage schedules, food items, customers, sellers and cutoff times, plus analytics and reports |
 | **Seller** | See cooking requirements for assigned meals and record prepared, consumed and wasted quantities |
 
-**Stack:** Python Flask · MySQL 8 (PyMySQL, parameterized SQL) · Bootstrap 5 · Chart.js · Lucide icons · Inter font
+**Stack:** ASP.NET Core 10 MVC (C#, Razor views) · MySQL 8 · Dapper + MySqlConnector (parameterized SQL) ·
+BCrypt password hashing · cookie authentication + antiforgery (CSRF) · Bootstrap 5 · Lucide icons · Inter font
+
+---
+
+## What to install on a new laptop
+
+| Tool | Version | How to install | Needed for |
+|------|---------|----------------|------------|
+| **.NET SDK** | 10.0 (LTS) | `winget install Microsoft.DotNet.SDK.10` or https://dotnet.microsoft.com/download | building and running the app |
+| **MySQL Server** | 8.0 | MySQL Installer from https://dev.mysql.com/downloads/installer/ (keep the `MySQL80` Windows service) | the database |
+| **Git** | any | `winget install Git.Git` | cloning the repo |
+| Visual Studio 2022/2026 *or* VS Code + C# Dev Kit | optional | – | editing / debugging |
+
+NuGet packages are restored **automatically** by `dotnet run` / `dotnet build` (they are listed in
+`MealTrack/MealTrack.csproj`, so you don't install them by hand):
+
+| NuGet package | Version | Why |
+|---------------|---------|-----|
+| `MySqlConnector` | 2.6.2 | MySQL driver for .NET (async, connection pooling) |
+| `Dapper` | 2.1.89 | Runs our hand-written, parameterized SQL and maps rows to C# classes |
+| `BCrypt.Net-Next` | 4.2.0 | Password hashing |
+| `ClosedXML` | 0.105.1 | Excel (.xlsx) report export |
+| `QRCoder` | 1.8.1 | Generates the meal check-in QR codes |
+
+The test project (`MealTrack.Tests`) also uses `xunit` 2.9.3, `xunit.runner.visualstudio` 4.0.1,
+`Microsoft.NET.Test.Sdk` 18.11.0 and `Microsoft.AspNetCore.Mvc.Testing` 10.0.14. Run them with `dotnet test` from the repo
+root (they use a separate `mealtrack_test` database, never your real one).
+
+Everything else (MVC, Razor, cookie auth, CSRF protection, background sweep job) is built into ASP.NET Core.
+Bootstrap, Lucide icons and the Inter font load from a CDN, so the PC needs internet access for the styling.
 
 ---
 
 ## Setup on Windows
 
-Prerequisites: **Python 3.10+** and **MySQL Server 8** (running as the `MySQL80` service).
-
 ```powershell
-cd "C:\Users\TmC\Desktop\Food Tracker"
+git clone <repo-url> "Food Tracker"
+cd "Food Tracker\MealTrack"
 
-# 1. Virtual environment + dependencies
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+# 1. MySQL credentials (this file is git-ignored)
+copy appsettings.Local.example.json appsettings.Local.json
+notepad appsettings.Local.json      # set your MySQL User and Password
 
-# 2. Configuration
-copy .env.example .env
-notepad .env          # set DB_PASSWORD (and DB_USER if not root), change SECRET_KEY
+# 2. Create the database, tables and demo data
+dotnet run -- init-db               # add --reset to drop & recreate, --no-demo for admin only
 
-# 3. Create the database, tables and demo data
-python database\init_db.py            # add --reset to drop & recreate, --no-demo for admin only
-
-# 4. Run
-python run.py
+# 3. Run the site
+dotnet run
 ```
 
-Open **http://127.0.0.1:5000**
+Open **http://localhost:5000**. Stop the server with `Ctrl+C`.
+
+In Visual Studio you can instead open `MealTrack.sln` and press **F5** (run `init-db` once from a terminal first).
 
 ### Demo accounts
 
@@ -51,7 +77,10 @@ Open **http://127.0.0.1:5000**
 | Customer (inactive, cannot log in) | customer12@mealtrack.local | Customer@123 |
 
 Demo data is generated **relative to today**: last week (closed and locked counts with preparation records),
-this week, and next week (mostly open for submission).
+this week, and next week (mostly open for submission). Run `dotnet run -- init-db --reset` before a demo to
+refresh the dates.
+
+Forgot-password links are printed in the terminal window running `dotnet run` (no mail server is configured).
 
 ---
 
@@ -59,56 +88,61 @@ this week, and next week (mostly open for submission).
 
 ```
 Food Tracker/
-├── run.py                  # entry point
-├── config.py               # settings loaded from .env
-├── requirements.txt
-├── database/
-│   ├── schema.sql          # tables, keys, indexes, CHECK constraints
-│   ├── seed.sql            # meal types (with default cutoffs) + food items
-│   └── init_db.py          # creates DB, runs SQL, generates demo users/schedules/counts
-└── app/
-    ├── __init__.py         # application factory, filters, error handlers
-    ├── db.py               # connection per request + query helpers
-    ├── auth_utils.py       # session login, role guards
-    ├── validators.py       # server-side input validation
-    ├── services/
-    │   ├── counts.py       # automatic food-count aggregation (single source of truth)
-    │   ├── cutoff.py       # cutoff rules, status logic, lock/notify sweep
-    │   └── notifications.py
-    ├── blueprints/         # auth (common), customer, admin, seller
-    ├── templates/          # base layout, partials, one folder per role
-    └── static/             # theme.css (4-colour design system), app.js, logo.svg
+├── MealTrack.sln
+└── MealTrack/
+    ├── MealTrack.csproj        # target framework + NuGet packages
+    ├── Program.cs              # startup: services, cookie auth, CSRF, middleware, init-db command
+    ├── appsettings.json        # default settings (business rules, DB host/name)
+    ├── appsettings.Local.json  # your MySQL user/password (git-ignored)
+    ├── Database/
+    │   ├── schema.sql          # tables, keys, indexes, CHECK constraints
+    │   └── seed.sql            # meal types (with default cutoffs) + food items
+    ├── Data/
+    │   ├── Db.cs               # connection + query helpers (Dapper), settings classes
+    │   └── DbInitializer.cs    # creates DB, runs SQL, generates demo users/schedules/counts
+    ├── Infrastructure/         # current-user middleware, flash messages, validators, UI helpers
+    ├── Services/
+    │   ├── CountService.cs     # automatic food-count aggregation (single source of truth)
+    │   ├── Cutoff.cs           # cutoff rules, status logic, background lock/notify job
+    │   └── NotificationService.cs
+    ├── Controllers/            # Auth (common), Customer, Admin, Seller, Error
+    ├── Models/                 # row classes and view models
+    ├── Views/                  # Razor views: Shared layout + one folder per role
+    └── wwwroot/                # theme.css (4-colour design system), app.js, logo.svg
 ```
 
-## Key business rules
+## Meal check-in with QR codes (reduces food wastage)
 
-* **Aggregation** – totals use `SUM(quantity)` over rows with status `submitted` or `locked` from
-  **active** customers only. Pending, cancelled and never-submitted rows are excluded.
-  **0 is a valid submission.** `UNIQUE(customer_id, food_schedule_id)` means an edited count
-  replaces the old one, so it is never double-counted. All totals come from live SQL queries.
-* **Cutoff** – each meal type has a default cutoff (Breakfast 8:00 PM the previous day, Lunch 9:00 AM,
-  Dinner 2:00 PM). Each schedule stores its own `cutoff_time`, and the server re-checks it inside a
-  transaction on every submission. After the cutoff the count becomes **Locked**.
-* **Statuses** – *Pending* (open, not submitted), *Submitted* (editable), *Locked* (cutoff passed),
-  *Not submitted* (closed without a count).
-* **Sweep** – about once a minute, during normal requests, MealTrack locks counts past their cutoff,
-  sends deadline reminders (2 h before cutoff) and sends final counts to the assigned sellers.
-  Every notification has a de-duplication key. No extra scheduler service is required.
+Each meal has **one QR code for the day** (for example today's Breakfast, today's Lunch, today's Dinner). The QR stays
+the same all day, and tomorrow every meal gets a new one. A QR only works on its own day.
 
-## Security
+1. **Admin or seller** opens **Meal Check-in** and clicks **Show QR** on the counter screen, or
+   prints it with **Print today's QR**. A 6-digit code is shown under the QR.
+2. **Customers** scan it with the phone camera, log in if asked, and the meal is **marked as eaten
+   straight away**. Scanning again does not count twice. Without a camera they open
+   **Meal Check-in** and type the 6-digit code. Staff can also tick people off with **Mark came** on the attendance list.
+3. MealTrack compares *applied* (count of 1 or more) with *came*:
+   * **No-show:** applied but never checked in. Those portions were cooked for nobody.
+   * **Walk-in:** came without applying.
+4. **Reports → Attendance & no-shows** shows this per meal, and the customer report has a *No-shows* column. The day
+   after a meal, every no-show customer gets a reminder to enter 0 next time.
 
-Werkzeug scrypt password hashing · session cookies (HttpOnly, SameSite=Lax, 8 h) · session reset on
-login · CSRF tokens on every form · role guard on every blueprint (changing the URL to another
-role's area returns **403**) · inactive users signed out immediately · parameterized queries only ·
-safe `next` redirects · `no-store` caching for authenticated pages.
+If a QR is shared outside the dining room, **New QR** replaces it for that meal, and the old QR stops working.
 
-**Forgot password:** no mail server is configured, so the one-time reset link (valid 30 minutes) is
-printed in the console window running `python run.py`. Admins can also reset passwords.
+**Phones need to reach the laptop.** `localhost` only works on the laptop itself, so for a demo with real phones:
 
-## Milestones
+```powershell
+dotnet run --launch-profile lan      # listens on every network card, port 5000
+ipconfig                             # find the Wi-Fi IPv4 address, e.g. 192.168.0.115
+```
 
-| # | Scope | Status |
-|---|-------|--------|
-| 1 | Foundation, database, authentication, design system, **Customer module** | ✅ |
-| 2 | **Admin module**: food items, schedules (daily/weekly/copy week), cutoff settings, customers, sellers, food counts, analytics | ⏳ |
-| 3 | **Seller module**: preparation tracking, wastage, notifications bell, reports (CSV/Excel), automated tests | ⏳ |
+Open the QR screen at `http://<that-ip>:5000/attendance` (the page shows the address if you opened it via localhost).
+Keep the phones on the same Wi-Fi, and click **Allow** when the Windows Firewall asks about `dotnet`.
+To pin the address used in the QR, set `MealTrack:PublicBaseUrl` in `appsettings.Local.json`.
+
+## Troubleshooting
+
+* **`Could not connect to MySQL`** – check `appsettings.Local.json` and that the `MySQL80` service is running
+  (`Get-Service MySQL80`).
+* **Port 5000 already in use** – stop the other process, or run `dotnet run --urls http://localhost:5050`.
+* **`Database 'mealtrack' already exists`** – use `dotnet run -- init-db --reset` (this deletes all data).

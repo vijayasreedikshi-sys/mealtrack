@@ -1,0 +1,20 @@
+@{
+    var messages = TempData.TakeFlashes();
+    var icons = new Dictionary<string, string>
+    {
+        ["success"] = "circle-check", ["danger"] = "circle-alert", ["warning"] = "triangle-alert", ["info"] = "info",
+    };
+}
+@if (messages.Count > 0)
+{
+    <div class="flash-stack mb-3">
+        @foreach (var m in messages)
+        {
+            var cat = icons.ContainsKey(m.Category) ? m.Category : "info";
+            <div class="alert alert-@cat alert-dismissible fade show" role="alert">
+                @Ui.Icon(icons[cat])<div>@m.Message</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+    </div>
+}

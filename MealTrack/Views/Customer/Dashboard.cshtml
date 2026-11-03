@@ -1,0 +1,123 @@
+@model CustomerDashboardVm
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["PageTitle"] = $"Hello, {Context.CurrentUser()!.FirstName}";
+    var today = DateTime.Today;
+}
+@section TopbarActions {
+  <a href="/check-in" class="btn btn-outline-secondary btn-sm">@Ui.Icon("scan-qr-code") Check in</a>
+  <a href="/customer/submit" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("clipboard-pen-line") Submit count</a>
+}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    @Ui.StatCard("list-checks", "This week submitted", $"{Model.WeekSubmitted} / {Model.WeekTotalMeals}", "meals counted (0 counts too)")
+  </div>
+  <div class="col-6 col-xl-3">
+    @Ui.StatCard("utensils", "My portions this week", Model.WeekPortions, "from submitted counts", "dark")
+  </div>
+  <div class="col-6 col-xl-3">
+    @Ui.StatCard("clock-alert", "Awaiting your count", Model.OpenUnsubmitted, "open meals this week", "grey")
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="stat-icon">@Ui.Icon("timer")</div>
+        <div class="min-w-0">
+          <div class="stat-label">Next cutoff</div>
+          @if (Model.NextDeadline is { } nd)
+          {
+            <div class="stat-value countdown" data-countdown="@Fmt.Iso(nd.CutoffTime)">—</div>
+            <div class="stat-sub text-truncate">@nd.MealName · @Fmt.Date(nd.ScheduleDate, "ddd dd MMM")</div>
+          }
+          else
+          {
+            <div class="stat-value">—</div><div class="stat-sub">No open meals</div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="card h-100">
+      <div class="card-header">
+        <h2>@Ui.Icon("calendar-check") Today's meals · @Fmt.Date(today, "dddd, dd MMM")</h2>
+        <a class="btn btn-sm btn-outline-secondary" href="/customer/submit?date=@Fmt.IsoDate(today)">Edit today's count</a>
+      </div>
+      <div class="card-body">
+        @if (Model.TodayRows.Count > 0)
+        {
+        <div class="row g-3">
+          @foreach (var r in Model.TodayRows)
+          {
+          <div class="col-md-4">
+            <div class="meal-card @(r.HasValue ? "is-submitted" : "")">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                @Ui.MealChip(r.MealName) @Ui.StatusBadge(r.Status)
+              </div>
+              <div class="food">@r.FoodName</div>
+              <div class="small text-muted mb-3">@r.Description</div>
+              <div class="d-flex justify-content-between align-items-end">
+                <div>
+                  <div class="small-caps">My quantity</div>
+                  <div class="qty">@(r.HasValue ? r.Quantity.ToString() : "–")</div>
+                </div>
+                <div class="text-end small text-muted">
+                  @if (r.IsOpen)
+                  {
+                    <text>Closes in<br><span class="countdown text-black" data-countdown="@Fmt.Iso(r.CutoffTime)"></span></text>
+                  }
+                  else
+                  {
+                    <text>Closed<br>@Fmt.Time(r.CutoffTime)</text>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        }
+        else
+        {
+          @Ui.EmptyState("calendar-x", "No menu published for today", "Check the weekly schedule for upcoming meals.")
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card h-100">
+      <div class="card-header"><h2>@Ui.Icon("clipboard-list") Needs your count</h2></div>
+      @if (Model.UpcomingPending.Count > 0)
+      {
+      <ul class="list-group list-group-flush">
+        @foreach (var p in Model.UpcomingPending)
+        {
+        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+          <div>
+            <div class="fw-semibold">@p.MealName · @p.FoodName</div>
+            <div class="small text-muted">@Fmt.Date(p.ScheduleDate, "ddd dd MMM") · closes @Fmt.Dt(p.CutoffTime, "ddd hh:mm tt")</div>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="/customer/submit?date=@Fmt.IsoDate(p.ScheduleDate)">Enter</a>
+        </li>
+        }
+      </ul>
+      <div class="card-body pt-2">
+        <a class="btn btn-primary w-100" href="/customer/submit?view=week&date=@Fmt.IsoDate(Model.WeekStart)">@Ui.Icon("calendar-range") Submit for the whole week</a>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("circle-check", "You're all set", "Every open meal has your count.")
+      }
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-info mt-4 mb-0">
+  @Ui.Icon("info")
+  <div>Enter <strong>0</strong> for meals you don't need. A 0 still counts as a submission, so the kitchen knows not to cook for you. You can change your count until the meal's cutoff time.</div>
+</div>

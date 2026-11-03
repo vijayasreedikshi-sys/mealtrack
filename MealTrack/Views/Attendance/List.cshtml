@@ -1,0 +1,86 @@
+@model AttendanceListVm
+@{
+    var m = Model.Meal;
+    var s = Model.Summary;
+    ViewData["Title"] = "Attendance List";
+    ViewData["PageTitle"] = $"{m.MealName} attendance · {m.FoodName}";
+    string MethodLabel(string? method) => method switch { "qr" => "QR scan", "code" => "Typed code", "manual" => "Marked by staff", _ => "" };
+}
+@section PageSub {<a href="/attendance?date=@Fmt.IsoDate(m.ScheduleDate)" class="text-decoration-none">← All meals</a> · @Fmt.Date(m.ScheduleDate, "dddd, dd MMM yyyy")}
+@section TopbarActions {
+  @if (m.ScheduleDate.Date == DateTime.Today)
+  {
+    <a href="/attendance/@m.Id" class="btn btn-primary btn-sm">@Ui.Icon("qr-code") Show QR</a>
+  }
+}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">@Ui.StatCard("clipboard-list", "Applied", s.AppliedCustomers, $"{s.AppliedPortions} portions requested")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("circle-check", "Came", s.Came, s.AppliedCustomers == 0 ? "" : $"{s.AttendancePct}% of applied", "dark")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("user-x", "No-show", s.NoShows, $"{s.NoShowPortions} portions not collected", "grey")</div>
+  <div class="col-6 col-xl-3">@Ui.StatCard("user-plus", "Walk-ins", s.WalkIns, "came without applying", "grey")</div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  @foreach (var (key, label) in new[] { ("all", "Everyone"), ("came", "Came"), ("noshow", "No-show"), ("walkin", "Walk-ins") })
+  {
+    <a class="btn btn-sm @(Model.Filter == key ? "btn-dark" : "btn-outline-secondary")" href="/attendance/@m.Id/list?filter=@key">@label</a>
+  }
+  <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" onclick="window.print()">@Ui.Icon("printer") Print</button>
+</div>
+
+<div class="card table-card">
+  @if (Model.Lines.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Customer</th><th>Room</th><th class="text-end">Applied qty</th><th>Status</th><th>Checked in</th><th class="no-print"></th></tr></thead>
+      <tbody>
+      @foreach (var l in Model.Lines)
+      {
+        <tr>
+          <td class="fw-semibold">@l.Name</td>
+          <td>@l.RoomNo</td>
+          <td class="text-end">@(l.Applied ? l.Quantity.ToString() : "—")</td>
+          <td>
+            @if (l.WalkIn) { <span class="status status-pending">Walk-in</span> }
+            else if (l.Came) { <span class="status status-completed">Came</span> }
+            else { <span class="status status-missed">No-show</span> }
+          </td>
+          <td class="small">
+            @if (l.CheckedInAt is { } at)
+            {
+              <div>@Fmt.Time(at)</div><div class="text-muted">@MethodLabel(l.Method)@(l.MarkedByName is null ? "" : $" ({l.MarkedByName})")</div>
+            }
+            else { <span class="text-muted">—</span> }
+          </td>
+          <td class="text-end no-print">
+            @if (Model.CanMark)
+            {
+              <form method="post" action="/attendance/@m.Id/mark" asp-antiforgery="true" class="d-inline">
+                <input type="hidden" name="customerId" value="@l.CustomerId">
+                <input type="hidden" name="filter" value="@Model.Filter">
+                @if (l.Came)
+                {
+                  <input type="hidden" name="undo" value="1">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Undo</button>
+                }
+                else
+                {
+                  <button class="btn btn-sm btn-outline-primary" type="submit">Mark came</button>
+                }
+              </form>
+            }
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("users", "Nobody in this list")
+  }
+</div>
+<p class="small text-muted mt-3 mb-0">Applied = submitted a count of 1 or more. Use <strong>Mark came</strong> for customers without a phone.</p>

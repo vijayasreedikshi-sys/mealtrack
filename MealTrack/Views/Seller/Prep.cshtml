@@ -1,0 +1,90 @@
+@model PrepFormVm
+@{
+    var a = Model.Assignment;
+    ViewData["Title"] = "Preparation Update";
+    ViewData["PageTitle"] = $"{a.MealName} · {a.FoodName}";
+}
+@section PageSub {<a href="/seller?date=@Fmt.IsoDate(a.ScheduleDate)" class="text-decoration-none">← Back</a> · @Fmt.Date(a.ScheduleDate, "dddd, dd MMM yyyy")}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form class="card" method="post" asp-antiforgery="true" novalidate id="prepForm">
+      <div class="card-header"><h2>@Ui.Icon("clipboard-pen-line") Preparation update</h2>@Ui.StatusBadge(Model.Existing?.PreparationStatus ?? "not_started")</div>
+      <div class="card-body">
+        <div class="mb-4">
+          <span class="form-label d-block">Status</span>
+          <div class="btn-group" role="group" aria-label="Preparation status">
+            @foreach (var (key, label) in new[] { ("not_started", "Not started"), ("preparing", "Preparing"), ("completed", "Completed") })
+            {
+              <input type="radio" class="btn-check" name="status" id="@($"st_{key}")" value="@key" checked="@(Model.Status == key)">
+              <label class="btn btn-sm btn-outline-secondary" for="@($"st_{key}")">@label</label>
+            }
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="prepared">Prepared</label>
+            <input class="form-control" type="number" min="0" id="prepared" name="prepared" value="@Math.Max(Model.Prepared, 0)" data-prep>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="consumed">Consumed</label>
+            <input class="form-control" type="number" min="0" id="consumed" name="consumed" value="@Math.Max(Model.Consumed, 0)" data-prep>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="remaining">Remaining</label>
+            <input class="form-control" type="number" min="0" id="remaining" name="remaining" value="@Math.Max(Model.Remaining, 0)" data-prep>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="wasted">Wasted</label>
+            <input class="form-control" type="number" min="0" id="wasted" name="wasted" value="@Math.Max(Model.Wasted, 0)" data-prep>
+          </div>
+        </div>
+        <div class="form-text mb-3">Consumed + remaining can't exceed prepared, and wasted is part of the remaining quantity.</div>
+        <div class="mb-4">
+          <label class="form-label" for="remarks">Remarks <span class="text-muted fw-normal">(optional)</span></label>
+          <input class="form-control" id="remarks" name="remarks" value="@Model.Remarks" maxlength="255" placeholder="e.g. 5 extra plates given to staff">
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button class="btn btn-primary" type="submit">@Ui.Icon("save") Save update</button>
+          <span class="small text-muted" id="prepCheck"></span>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="big-total mb-4">
+      <div class="label mb-2">Required quantity @(a.Final ? "(final)" : "(live – can still change)")</div>
+      <div class="num">@a.TotalQty</div>
+      <div class="label mt-2">@a.Submitters customers · cutoff @Fmt.Dt(a.CutoffTime, "ddd hh:mm tt")</div>
+    </div>
+    <div class="row g-3">
+      <div class="col-6">@Ui.StatCard("scale", "Variance", "—", "prepared − required", "dark")</div>
+      <div class="col-6">@Ui.StatCard("leaf", "Wastage", "—", "wasted ÷ prepared", "grey")</div>
+    </div>
+    @if (Model.Existing is not null)
+    {
+      <p class="small text-muted mt-3 mb-0">Last saved @Fmt.Dt(Model.Existing.UpdatedAt) (required then: @Model.Existing.RequiredQuantity).</p>
+    }
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  (function () {
+    var required = @a.TotalQty;
+    var vals = document.querySelectorAll(".stat-card .stat-value");
+    function n(id) { return parseInt(document.getElementById(id).value, 10) || 0; }
+    function update() {
+      var p = n("prepared"), c = n("consumed"), r = n("remaining"), w = n("wasted");
+      var v = p - required;
+      vals[0].textContent = (v > 0 ? "+" : "") + v;
+      vals[1].textContent = p ? (Math.round(w * 1000 / p) / 10) + "%" : "0%";
+      var msg = [];
+      if (c + r > p) msg.push("Consumed + remaining is more than prepared.");
+      if (w > r) msg.push("Wasted is more than remaining.");
+      document.getElementById("prepCheck").textContent = msg.join(" ");
+    }
+    document.querySelectorAll("[data-prep]").forEach(function (el) { el.addEventListener("input", update); });
+    update();
+  })();
+</script>
+}

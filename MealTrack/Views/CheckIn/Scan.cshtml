@@ -1,0 +1,45 @@
+@model ScanVm
+@{
+    ViewData["Title"] = "Meal Check-in";
+    var m = Model.Meal;
+}
+@section PageSub {Scan the QR at the counter when you collect your food}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card scan-card text-center">
+      <div class="card-body p-4">
+        @switch (Model.State)
+        {
+          case "done":
+          case "already":
+            <div class="scan-icon ok">@Ui.Icon("circle-check-big")</div>
+            <div class="mb-2">@Ui.MealChip(m!.MealName)</div>
+            <h2 class="h4 fw-bold mb-1">@(Model.State == "done" ? $"{m.MealName} marked as eaten" : $"Already marked for {m.MealName}")</h2>
+            <p class="text-muted mb-3">@m.FoodName · @Fmt.Date(m.ScheduleDate, "ddd dd MMM") · @(Model.CheckedInAt is { } t ? Fmt.Time(t) : "")</p>
+            if (Model.AppliedQty > 0)
+            {
+              <p class="mb-4">Your count: <strong>@Model.AppliedQty @(Model.AppliedQty == 1 ? "portion" : "portions")</strong>. Enjoy your meal!</p>
+            }
+            else
+            {
+              <div class="alert alert-warning text-start">@Ui.Icon("triangle-alert")<div>You did <strong>not</strong> set a count for this meal, so you are recorded as a <strong>walk-in</strong>. Please submit your count next time so the kitchen cooks the right amount.</div></div>
+            }
+            <a class="btn btn-outline-secondary w-100" href="/check-in">My check-ins today</a>
+            break;
+          case "wrong_day":
+            <div class="scan-icon warn">@Ui.Icon("calendar-x")</div>
+            <h2 class="h4 fw-bold mb-1">Not today's QR</h2>
+            <p class="text-muted mb-4">This QR is for @m!.MealName on @Fmt.Date(m.ScheduleDate, "ddd dd MMM"). Each meal gets a new QR every day. Please scan today's QR at the counter.</p>
+            <a class="btn btn-outline-secondary w-100" href="/check-in">Today's meals</a>
+            break;
+          default:
+            <div class="scan-icon warn">@Ui.Icon("circle-x")</div>
+            <h2 class="h4 fw-bold mb-1">QR code not recognised</h2>
+            <p class="text-muted mb-4">This is not a valid MealTrack meal QR, or it has been replaced with a new one.</p>
+            <a class="btn btn-outline-secondary w-100" href="/check-in">Enter code instead</a>
+            break;
+        }
+      </div>
+    </div>
+  </div>
+</div>

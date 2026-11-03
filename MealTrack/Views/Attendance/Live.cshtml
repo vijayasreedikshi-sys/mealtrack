@@ -1,0 +1,108 @@
+@model AttendanceLiveVm
+@{
+    var m = Model.Meal;
+    var s = Model.Summary;
+    ViewData["Title"] = "Meal Check-in";
+    ViewData["PageTitle"] = $"{m.MealName} check-in · {m.FoodName}";
+}
+@section PageSub {<a href="/attendance?date=@Fmt.IsoDate(m.ScheduleDate)" class="text-decoration-none">← All meals</a> · @Fmt.Date(m.ScheduleDate, "dddd, dd MMM yyyy")}
+@section TopbarActions {
+  <a href="/attendance/@m.Id/list" class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex">@Ui.Icon("list-checks") Attendance list</a>
+}
+
+@if (!Model.IsToday)
+{
+  <div class="alert alert-warning">@Ui.Icon("calendar-x")<div>This meal is on <strong>@Fmt.Date(m.ScheduleDate, "ddd dd MMM")</strong>. Customers can only check in on the day of the meal, so scans today will be refused.</div></div>
+}
+@if (Model.LanUrls.Count > 0)
+{
+  <div class="alert alert-info no-print">
+    @Ui.Icon("wifi")
+    <div>
+      This screen is opened as <strong>localhost</strong>, which phones cannot reach. Start the app with
+      <code>dotnet run --launch-profile lan</code> and open this page with the laptop's Wi-Fi address instead:
+      @foreach (var u in Model.LanUrls) { <a class="fw-semibold d-block" href="@u">@u</a> }
+      <span class="small text-muted">Phones must be on the same Wi-Fi. Customers can also type the 6-digit code at <strong>/check-in</strong>.</span>
+    </div>
+  </div>
+}
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="card qr-stage" id="qrStage">
+      <div class="card-body text-center">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          @Ui.MealChip(m.MealName)
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="fullscreenBtn">@Ui.Icon("maximize") Full screen</button>
+        </div>
+        <div class="qr-title">Scan to check in for @m.MealName</div>
+        <div class="qr-sub">@m.FoodName · @Fmt.Date(m.ScheduleDate, "ddd dd MMM")</div>
+        <div class="qr-box mx-auto">@Html.Raw(Model.Qr.Svg)</div>
+        <div class="small text-muted mt-2">No camera? Open <strong>Check In</strong> in MealTrack and type this code:</div>
+        <div class="qr-code">@(Model.Qr.Code[..3]) @(Model.Qr.Code[3..])</div>
+        <div class="small text-muted">One QR for this meal today. Tomorrow's @m.MealName gets a new QR.</div>
+        <div class="small text-muted text-break mt-1 scan-link">@Model.Qr.ScanUrl</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="row g-3 mb-3">
+      <div class="col-6"><div class="big-total"><div class="label mb-1">Checked in</div><div class="num" id="stCame">@s.Came</div><div class="label mt-1">of <span id="stApplied">@s.AppliedCustomers</span> who applied</div></div></div>
+      <div class="col-6"><div class="card stat-card h-100"><div class="card-body"><div class="stat-icon grey">@Ui.Icon("user-x")</div><div class="min-w-0"><div class="stat-label">Not yet came</div><div class="stat-value" id="stNoShow">@s.NoShows</div><div class="stat-sub"><span id="stNoShowPortions">@s.NoShowPortions</span> portions waiting</div></div></div></div></div>
+      <div class="col-6"><div class="card stat-card h-100"><div class="card-body"><div class="stat-icon dark">@Ui.Icon("percent")</div><div class="min-w-0"><div class="stat-label">Attendance</div><div class="stat-value" id="stPct">@s.AttendancePct%</div><div class="stat-sub">of applied customers</div></div></div></div></div>
+      <div class="col-6"><div class="card stat-card h-100"><div class="card-body"><div class="stat-icon grey">@Ui.Icon("user-plus")</div><div class="min-w-0"><div class="stat-label">Walk-ins</div><div class="stat-value" id="stWalkIn">@s.WalkIns</div><div class="stat-sub">came without applying</div></div></div></div></div>
+    </div>
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("activity") Latest check-ins</h2><span class="small text-muted" id="liveState">live</span></div>
+      <ul class="list-group list-group-flush" id="recentList">
+        <li class="list-group-item text-muted small py-3">Waiting for the first scan…</li>
+      </ul>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mt-3 no-print">
+      <a class="btn btn-outline-secondary btn-sm" href="/attendance/@m.Id/list">@Ui.Icon("list-checks") Full list / mark manually</a>
+      <a class="btn btn-outline-secondary btn-sm" href="/attendance/@m.Id/print" target="_blank">@Ui.Icon("printer") Print today's QR</a>
+      <form method="post" action="/attendance/@m.Id/regenerate" asp-antiforgery="true" class="d-inline">
+        <button class="btn btn-outline-secondary btn-sm" type="submit" title="Use if the QR was shared: the current QR stops working">@Ui.Icon("refresh-cw") New QR</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  (function () {
+    var url = "/attendance/@m.Id/live";
+    var state = document.getElementById("liveState");
+    function set(id, v) { document.getElementById(id).textContent = v; }
+    function esc(t) { var d = document.createElement("div"); d.textContent = t == null ? "" : t; return d.innerHTML; }
+
+    function render(d) {
+      var st = d.stats;
+      set("stCame", st.came); set("stApplied", st.appliedCustomers); set("stNoShow", st.noShows);
+      set("stNoShowPortions", st.noShowPortions); set("stPct", st.attendancePct + "%"); set("stWalkIn", st.walkIns);
+      var list = document.getElementById("recentList");
+      list.innerHTML = d.recent.length ? d.recent.map(function (r) {
+        return '<li class="list-group-item d-flex justify-content-between align-items-center">' +
+          '<div><div class="fw-semibold">' + esc(r.name) + '</div><div class="small text-muted">' + esc(r.roomNo || "") +
+          (r.method === "manual" ? " · marked by staff" : r.method === "code" ? " · typed code" : "") + '</div></div>' +
+          '<div class="text-end"><div class="small">' + esc(r.time) + '</div>' +
+          (r.walkIn ? '<span class="status status-pending">Walk-in</span>' : '<span class="status status-completed">Applied</span>') + '</div></li>';
+      }).join("") : '<li class="list-group-item text-muted small py-3">Waiting for the first scan…</li>';
+    }
+
+    function poll() {
+      fetch(url, { headers: { "Accept": "application/json" }, cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) { render(d); state.textContent = "live"; })
+        .catch(function () { state.textContent = "reconnecting…"; });
+    }
+
+    document.getElementById("fullscreenBtn").addEventListener("click", function () {
+      var el = document.getElementById("qrStage");
+      if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen();
+    });
+    poll();
+    setInterval(poll, 4000); // live numbers
+  })();
+</script>
+}

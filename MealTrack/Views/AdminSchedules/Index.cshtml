@@ -1,0 +1,85 @@
+@model ScheduleGridVm
+@{
+    ViewData["Title"] = "Food Schedules";
+    ViewData["PageTitle"] = "Manage Food Schedules";
+    var ws = Fmt.IsoDate(Model.WeekStart);
+    var today = DateTime.Today;
+}
+@section PageSub {Week of @Fmt.Date(Model.WeekStart, "dd MMM") – @Fmt.Date(Model.WeekEnd, "dd MMM yyyy")}
+@section TopbarActions {
+  <a href="/admin/schedules/builder?week=@ws" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("table-properties") Week builder</a>
+}
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div class="btn-group">
+    <a class="btn btn-outline-secondary btn-sm" href="/admin/schedules?week=@Fmt.IsoDate(Model.WeekStart.AddDays(-7))">@Ui.Icon("chevron-left") Previous</a>
+    <a class="btn btn-outline-secondary btn-sm" href="/admin/schedules">This week</a>
+    <a class="btn btn-outline-secondary btn-sm" href="/admin/schedules?week=@Fmt.IsoDate(Model.WeekStart.AddDays(7))">Next @Ui.Icon("chevron-right")</a>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="/admin/schedules/builder?week=@ws" class="btn btn-outline-primary btn-sm">@Ui.Icon("table-properties") Week builder</a>
+    <form method="post" action="/admin/schedules/copy-previous" asp-antiforgery="true">
+      <input type="hidden" name="week" value="@ws">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">@Ui.Icon("copy") Copy previous week</button>
+    </form>
+    @if (Model.Drafts > 0)
+    {
+    <form method="post" action="/admin/schedules/publish" asp-antiforgery="true" data-confirm="Publish @Model.Drafts draft meal(s)? All customers will be notified.">
+      <input type="hidden" name="week" value="@ws"><input type="hidden" name="publish" value="1">
+      <button class="btn btn-primary btn-sm" type="submit">@Ui.Icon("send") Publish week (@Model.Drafts)</button>
+    </form>
+    }
+    @if (Model.Published > 0)
+    {
+    <form method="post" action="/admin/schedules/publish" asp-antiforgery="true" data-confirm="Unpublish this week? Customers will no longer see these meals.">
+      <input type="hidden" name="week" value="@ws"><input type="hidden" name="publish" value="0">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">@Ui.Icon("eye-off") Unpublish</button>
+    </form>
+    }
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-4">@Ui.StatCard("calendar-check", "Published meals", Model.Published, "visible to customers")</div>
+  <div class="col-4">@Ui.StatCard("file-pen-line", "Drafts", Model.Drafts, "not yet visible", "grey")</div>
+  <div class="col-4">@Ui.StatCard("utensils", "Portions this week", Model.Cells.Values.Sum(c => c.TotalQty), "submitted so far", "dark")</div>
+</div>
+
+<div class="card table-card">
+  <div class="table-responsive">
+    <table class="table week-grid mb-0">
+      <thead><tr><th>Date</th>@foreach (var m in Model.MealTypes) {<th>@Ui.MealChip(m.MealName)</th>}</tr></thead>
+      <tbody>
+      @for (var i = 0; i < 7; i++)
+      {
+        var d = Model.WeekStart.AddDays(i);
+        <tr class="@(d == today ? "today-row" : "")">
+          <td class="day-cell">
+            <div class="fw-semibold">@Fmt.Date(d, "dddd")</div>
+            <div class="small text-muted">@Fmt.Date(d, "dd MMM")@if (d == today) {<text> · <span class="text-green fw-semibold">Today</span></text>}</div>
+          </td>
+          @foreach (var m in Model.MealTypes)
+          {
+            var c = Model.Cell(d, m.Id);
+            <td style="min-width:180px">
+              @if (c is not null)
+              {
+                <a class="sched-cell @(c.IsPublished ? "" : "is-draft")" href="/admin/schedules/@c.Id/edit">
+                  <div class="d-flex justify-content-between gap-2"><span class="food">@c.FoodName</span>@Ui.StatusBadge(c.IsPublished ? "published" : "draft")</div>
+                  <div class="meta mt-1">Cutoff @Fmt.Dt(c.CutoffTime, "ddd hh:mm tt")</div>
+                  <div class="meta"><strong class="text-black">@c.TotalQty</strong> portions · @c.Submitters/@Model.ActiveCustomers submitted</div>
+                  <div class="meta text-truncate">@Ui.Icon("chef-hat") @(c.Sellers ?? "No seller assigned")</div>
+                </a>
+              }
+              else
+              {
+                <a class="sched-cell empty" href="/admin/schedules/new?date=@Fmt.IsoDate(d)&meal=@m.Id">@Ui.Icon("plus") Add @m.MealName.ToLowerInvariant()</a>
+              }
+            </td>
+          }
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="small text-muted mt-3 mb-0">Dashed cells are drafts that customers can't see yet. Publishing notifies customers. Changing the food or cutoff of a published meal notifies customers who already submitted and the assigned sellers.</p>

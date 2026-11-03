@@ -1,0 +1,87 @@
+@model FoodItemsVm
+@{
+    ViewData["Title"] = "Food Items";
+    ViewData["PageTitle"] = "Manage Food Items";
+}
+@section PageSub {Menu items you can assign to breakfast, lunch and dinner schedules}
+@section TopbarActions {
+  <a href="/admin/food-items/new" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("plus") Add food item</a>
+}
+<div class="row g-3 mb-4">
+  <div class="col-4">@Ui.StatCard("utensils", "Total items", Model.Stats.Total)</div>
+  <div class="col-4">@Ui.StatCard("circle-check", "Active", Model.Stats.Active, "available for schedules")</div>
+  <div class="col-4">@Ui.StatCard("circle-pause", "Inactive", Model.Stats.Inactive, "hidden from new schedules", "grey")</div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header">
+    <form class="d-flex flex-wrap gap-2 flex-grow-1" method="get">
+      <div class="input-group" style="max-width:320px">
+        <span class="input-group-text">@Ui.Icon("search")</span>
+        <input class="form-control" type="search" name="q" value="@Model.Q" placeholder="Search food or description">
+      </div>
+      <select class="form-select" name="status" style="max-width:170px" onchange="this.form.submit()">
+        <option value="">All statuses</option>
+        <option value="active" selected="@(Model.Status == "active")">Active</option>
+        <option value="inactive" selected="@(Model.Status == "inactive")">Inactive</option>
+      </select>
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+      @if (Model.Q != "" || Model.Status != "")
+      {
+        <a class="btn btn-link text-decoration-none" href="/admin/food-items">Clear</a>
+      }
+    </form>
+    <a href="/admin/food-items/new" class="btn btn-primary btn-sm d-md-none">@Ui.Icon("plus") Add</a>
+  </div>
+
+  @if (Model.Items.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr><th>Food item</th><th>Unit</th><th class="text-end">Price</th><th class="d-none d-lg-table-cell">Served as</th>
+            <th class="d-none d-md-table-cell">Next scheduled</th><th>Status</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+      @foreach (var f in Model.Items)
+      {
+        var toggle = f.Status == "active" ? "Deactivate" : "Activate";
+        <tr class="@(f.Status == "inactive" ? "opacity-75" : "")">
+          <td>
+            <div class="fw-semibold">@f.FoodName</div>
+            <div class="small text-muted text-truncate" style="max-width:320px">@(f.Description ?? "—")</div>
+          </td>
+          <td class="text-capitalize">@f.Unit</td>
+          <td class="text-end">@(f.Price is null ? "—" : "₹" + f.Price.Value.ToString("0.00"))</td>
+          <td class="d-none d-lg-table-cell small">@(f.MealNames ?? "Not scheduled yet")</td>
+          <td class="d-none d-md-table-cell small">
+            @if (f.NextDate is not null) { @Fmt.Date(f.NextDate, "ddd, dd MMM") } else {<span class="text-muted">—</span>}
+            <div class="text-muted">@f.TimesScheduled @(f.TimesScheduled == 1 ? "time" : "times") in total</div>
+          </td>
+          <td>@Ui.StatusBadge(f.Status)</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary btn-icon" href="/admin/food-items/@f.Id/edit" title="Edit" aria-label="Edit @f.FoodName">@Ui.Icon("pencil")</a>
+            <form class="d-inline" method="post" action="/admin/food-items/@f.Id/toggle" asp-antiforgery="true">
+              <button class="btn btn-sm btn-outline-secondary btn-icon" type="submit" title="@toggle" aria-label="@toggle @f.FoodName">
+                @Ui.Icon(f.Status == "active" ? "eye-off" : "eye")</button>
+            </form>
+            @if (f.TimesScheduled == 0)
+            {
+            <form class="d-inline" method="post" action="/admin/food-items/@f.Id/delete" asp-antiforgery="true"
+                  data-confirm="Delete “@f.FoodName” permanently?">
+              <button class="btn btn-sm btn-outline-danger btn-icon" type="submit" title="Delete" aria-label="Delete @f.FoodName">@Ui.Icon("trash-2")</button>
+            </form>
+            }
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("utensils-crossed", "No food items found", "Try a different search, or add a new food item.")
+  }
+</div>
+<p class="small text-muted mt-3 mb-0">Items already used in a schedule can't be deleted, because that would break count history. Deactivate them instead and they'll stop appearing when you build new schedules.</p>

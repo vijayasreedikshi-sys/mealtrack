@@ -1,0 +1,49 @@
+@model PrepHistoryVm
+@{
+    ViewData["Title"] = "Preparation History";
+}
+@section PageSub {@Fmt.Date(Model.Start, "dd MMM yyyy") – @Fmt.Date(Model.End, "dd MMM yyyy")}
+<form class="card card-body mb-4" method="get">
+  <div class="row g-3 align-items-end">
+    <div class="col-sm-4"><label class="form-label" for="start">From</label><input class="form-control" type="date" id="start" name="start" value="@Fmt.IsoDate(Model.Start)"></div>
+    <div class="col-sm-4"><label class="form-label" for="end">To</label><input class="form-control" type="date" id="end" name="end" value="@Fmt.IsoDate(Model.End)"></div>
+    <div class="col-sm-4 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit">@Ui.Icon("filter") Apply</button><a class="btn btn-outline-secondary" href="/seller/history">Reset</a></div>
+  </div>
+</form>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">@Ui.StatCard("clipboard-list", "Required", Model.Required, "total portions")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("chef-hat", "Prepared", Model.Prepared, $"{Model.Prepared - Model.Required:+#;-#;0} vs required", "dark")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("trash-2", "Wasted", Model.Wasted, "portions", "grey")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("leaf", "Wastage", $"{Model.WastagePct}%", "wasted ÷ prepared")</div>
+</div>
+<div class="card table-card">
+  @if (Model.Rows.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table table-hover table-sm">
+      <thead><tr><th>Date</th><th>Meal</th><th class="text-end">Required</th><th class="text-end">Prepared</th><th class="text-end">Consumed</th><th class="text-end">Remaining</th><th class="text-end">Wasted</th><th class="text-end">Wastage</th><th>Status</th><th class="d-none d-lg-table-cell">Remarks</th></tr></thead>
+      <tbody>
+      @foreach (var r in Model.Rows)
+      {
+        <tr>
+          <td class="text-nowrap">@Fmt.Date(r.ScheduleDate, "ddd, dd MMM")</td>
+          <td>@Ui.MealChip(r.MealName) <span class="small text-muted">@r.FoodName</span></td>
+          <td class="text-end">@r.RequiredQuantity</td>
+          <td class="text-end fw-semibold">@r.PreparedQuantity</td>
+          <td class="text-end">@r.ConsumedQuantity</td>
+          <td class="text-end">@r.RemainingQuantity</td>
+          <td class="text-end">@r.WastedQuantity</td>
+          <td class="text-end">@r.WastagePct%</td>
+          <td>@Ui.StatusBadge(r.PreparationStatus)</td>
+          <td class="d-none d-lg-table-cell small text-muted">@r.Remarks</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("history", "No preparation records in this period")
+  }
+</div>

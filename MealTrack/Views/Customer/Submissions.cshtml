@@ -1,0 +1,58 @@
+@model SubmissionsVm
+@{
+    ViewData["Title"] = "My Submissions";
+    var today = DateTime.Today;
+}
+@section PageSub {Upcoming meals from @Fmt.Date(today, "dd MMM") to @Fmt.Date(Model.End, "dd MMM yyyy")}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">@Ui.StatCard("circle-check", "Submitted", Model.Counts["submitted"], "editable until cutoff")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("lock", "Locked", Model.Counts["locked"], "cutoff passed", "dark")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("hourglass", "Pending", Model.Counts["pending"], "still need your count", "grey")</div>
+  <div class="col-6 col-lg-3">@Ui.StatCard("circle-slash", "Not submitted", Model.Counts["missed"], "closed without a count", "grey")</div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header">
+    <h2>@Ui.Icon("list-checks") Submission status</h2>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <label class="small text-muted text-nowrap" for="end">Show until</label>
+      <input class="form-control form-control-sm" type="date" id="end" name="end" value="@Fmt.IsoDate(Model.End)" min="@Fmt.IsoDate(today)" onchange="this.form.submit()">
+    </form>
+  </div>
+  @if (Model.Grouped.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead><tr><th>Date</th><th>Meal</th><th>Food</th><th class="text-center">Quantity</th><th>Status</th><th>Last updated</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var group in Model.Grouped)
+      {
+        var rows = group.ToList();
+        for (var i = 0; i < rows.Count; i++)
+        {
+          var r = rows[i];
+        <tr>
+          @if (i == 0) {<td rowspan="@rows.Count" class="fw-semibold text-nowrap">@Fmt.Date(group.Key, "ddd, dd MMM")</td>}
+          <td>@Ui.MealChip(r.MealName)</td>
+          <td>@r.FoodName</td>
+          <td class="text-center fw-bold">@(r.HasValue ? r.Quantity.ToString() : "–")</td>
+          <td>@Ui.StatusBadge(r.Status)</td>
+          <td class="small text-muted text-nowrap">@(r.UpdatedAt is null ? "—" : Fmt.Dt(r.UpdatedAt, "dd MMM, hh:mm tt"))</td>
+          <td class="text-end">
+            @if (r.IsOpen)
+            {
+            <a class="btn btn-sm @(r.HasValue ? "btn-outline-secondary" : "btn-primary")" href="/customer/submit?date=@Fmt.IsoDate(group.Key)">@(r.HasValue ? "Edit" : "Enter")</a>
+            }
+          </td>
+        </tr>
+        }
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("calendar-x", "No upcoming meals published yet")
+  }
+</div>

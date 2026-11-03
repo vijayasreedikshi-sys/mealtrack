@@ -1,0 +1,105 @@
+@model HistoryVm
+@{
+    ViewData["Title"] = "Count History";
+    ViewData["PageTitle"] = "Food Count History";
+}
+@section PageSub {@Fmt.Date(Model.Start, "dd MMM yyyy") – @Fmt.Date(Model.End, "dd MMM yyyy")}
+<form class="card card-body mb-4" method="get">
+  <div class="row g-3 align-items-end">
+    <div class="col-sm-4 col-lg-3">
+      <label class="form-label" for="start">From</label>
+      <input class="form-control" type="date" id="start" name="start" value="@Fmt.IsoDate(Model.Start)">
+    </div>
+    <div class="col-sm-4 col-lg-3">
+      <label class="form-label" for="end">To</label>
+      <input class="form-control" type="date" id="end" name="end" value="@Fmt.IsoDate(Model.End)">
+    </div>
+    <div class="col-sm-4 col-lg-3">
+      <label class="form-label" for="meal">Meal</label>
+      <select class="form-select" id="meal" name="meal">
+        <option value="">All meals</option>
+        @foreach (var m in Model.MealTypes)
+        {
+          <option value="@m.Id" selected="@(Model.MealFilter == m.Id)">@m.MealName</option>
+        }
+      </select>
+    </div>
+    <div class="col-lg-3 d-flex gap-2">
+      <button class="btn btn-primary flex-grow-1" type="submit">@Ui.Icon("filter") Apply</button>
+      <a class="btn btn-outline-secondary" href="/customer/history">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3 mb-4">
+  @foreach (var (meal, total) in Model.MealTotals)
+  {
+  <div class="col-6 col-lg-3">@Ui.StatCard(Ui.MealIcons.GetValueOrDefault(meal, "utensils"), meal + " portions", total, "in selected period")</div>
+  }
+  <div class="col-6 col-lg-3">@Ui.StatCard("circle-slash", "Meals not submitted", Model.Missed, "closed without a count", "grey")</div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("history") Past counts</h2><span class="small text-muted">@Model.Rows.Count meals</span></div>
+      @if (Model.Rows.Count > 0)
+      {
+      <div class="table-responsive" style="max-height:620px">
+        <table class="table table-hover">
+          <thead class="sticky-top"><tr><th>Date</th><th>Meal</th><th>Food</th><th class="text-center">Qty</th><th>Status</th><th class="d-none d-md-table-cell">Submitted</th></tr></thead>
+          <tbody>
+          @foreach (var r in Model.Rows)
+          {
+            <tr>
+              <td class="text-nowrap">@Fmt.Date(r.ScheduleDate, "ddd, dd MMM")</td>
+              <td>@Ui.MealChip(r.MealName)</td>
+              <td>@r.FoodName</td>
+              <td class="text-center fw-bold">@(r.Status == "locked" ? r.Quantity.ToString() : "–")</td>
+              <td>@Ui.StatusBadge(r.Status)</td>
+              <td class="d-none d-md-table-cell small text-muted text-nowrap">
+                @if (r.SubmittedAt is not null)
+                {
+                  @Fmt.Dt(r.SubmittedAt, "dd MMM, hh:mm tt")@if (r.Changes > 1) {<text> · edited @(r.Changes - 1)×</text>}
+                }
+                else
+                {
+                  <text>—</text>
+                }
+              </td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("history", "No past meals in this period")
+      }
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("calendar-range") Monthly totals</h2></div>
+      @if (Model.Monthly.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Month</th><th class="text-end">B</th><th class="text-end">L</th><th class="text-end">D</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          @foreach (var m in Model.Monthly)
+          {
+            <tr><td>@m.Label</td><td class="text-end">@m.Breakfast</td><td class="text-end">@m.Lunch</td><td class="text-end">@m.Dinner</td><td class="text-end fw-bold">@m.Total</td></tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar", "No submissions yet")
+      }
+    </div>
+  </div>
+</div>

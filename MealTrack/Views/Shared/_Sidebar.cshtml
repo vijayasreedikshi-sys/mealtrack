@@ -1,0 +1,90 @@
+@{
+    var user = Context.CurrentUser()!;
+    var unread = ViewData["UnreadCount"] as int? ?? 0;
+    var current = $"{ViewContext.RouteData.Values["controller"]}.{ViewContext.RouteData.Values["action"]}";
+
+    // activeWhen: "Controller.Action" names (or a "Controller.Prefix*" pattern) that highlight this item
+    void NavItem(string href, string icon, string label, string activeWhen, int? badge = null)
+    {
+        var isActive = activeWhen.Split(',').Any(p => p.EndsWith('*')
+            ? current.StartsWith(p.TrimEnd('*'), StringComparison.Ordinal)
+            : current == p);
+        <li><a href="@href" class="@(isActive ? "active" : "")" aria-current="@(isActive ? "page" : null)">
+            @Ui.Icon(icon)<span>@label</span>@if (badge is > 0) {<span class="nav-badge">@badge</span>}</a></li>
+    }
+}
+<aside class="offcanvas-lg offcanvas-start sidebar" tabindex="-1" id="sidebar" aria-label="Main navigation">
+  <div class="offcanvas-body">
+    <div class="d-flex align-items-center justify-content-between">
+      <a class="sidebar-brand" href="/">
+        <img src="~/img/logo.svg" alt="">
+        <span><span class="brand-name d-block">MealTrack</span><span class="brand-tag">Smart Food Count &amp; Meal Planning</span></span>
+      </a>
+      <button type="button" class="btn-close d-lg-none me-3" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
+    </div>
+
+    @if (user.Role == Roles.Customer)
+    {
+      <div class="sidebar-section">Meals</div>
+      <ul class="sidebar-nav">
+        @{ NavItem("/customer", "layout-dashboard", "Dashboard", "Customer.Dashboard"); }
+        @{ NavItem("/customer/schedule", "calendar-days", "Weekly Schedule", "Customer.Schedule"); }
+        @{ NavItem("/customer/submit", "clipboard-pen-line", "Submit Food Count", "Customer.Submit*"); }
+        @{ NavItem("/customer/submissions", "list-checks", "My Submissions", "Customer.Submissions"); }
+        @{ NavItem("/customer/history", "history", "Count History", "Customer.History"); }
+        @{ NavItem("/check-in", "scan-qr-code", "Meal Check-in", "CheckIn.*"); }
+      </ul>
+    }
+    else if (user.Role == Roles.Admin)
+    {
+      <div class="sidebar-section">Overview</div>
+      <ul class="sidebar-nav">
+        @{ NavItem("/admin", "layout-dashboard", "Dashboard", "Admin.Dashboard"); }
+        @{ NavItem("/admin/counts", "calculator", "Food Counts", "AdminCounts.*"); }
+        @{ NavItem("/attendance", "qr-code", "Meal Check-in", "Attendance.*"); }
+        @{ NavItem("/admin/reports", "file-chart-column", "Reports", "AdminReports.*"); }
+      </ul>
+      <div class="sidebar-section">Menu</div>
+      <ul class="sidebar-nav">
+        @{ NavItem("/admin/schedules", "calendar-days", "Food Schedules", "AdminSchedules.Index,AdminSchedules.Builder,AdminSchedules.New,AdminSchedules.Create,AdminSchedules.Edit,AdminSchedules.Update"); }
+        @{ NavItem("/admin/food-items", "utensils", "Food Items", "Admin.FoodItem*"); }
+        @{ NavItem("/admin/cutoffs", "timer", "Cutoff Times", "AdminSchedules.Cutoffs*"); }
+      </ul>
+      <div class="sidebar-section">People</div>
+      <ul class="sidebar-nav">
+        @{ NavItem("/admin/customers", "users", "Customers", Context.Request.Path.StartsWithSegments("/admin/customers") ? current : "-"); }
+        @{ NavItem("/admin/sellers", "chef-hat", "Sellers", Context.Request.Path.StartsWithSegments("/admin/sellers") ? current : "-"); }
+      </ul>
+    }
+    else if (user.Role == Roles.Seller)
+    {
+      <div class="sidebar-section">Kitchen</div>
+      <ul class="sidebar-nav">
+        @{ NavItem("/seller", "layout-dashboard", "Dashboard", "Seller.Dashboard"); }
+        @{ NavItem("/seller/requirements", "clipboard-list", "Cooking Requirements", "Seller.Requirements"); }
+        @{ NavItem("/seller/assignments", "calendar-days", "Assigned Schedules", "Seller.Assignments"); }
+        @{ NavItem("/attendance", "qr-code", "Meal Check-in (QR)", "Attendance.*"); }
+        @{ NavItem("/seller/history", "history", "Preparation History", "Seller.History"); }
+      </ul>
+    }
+
+    <div class="sidebar-section">Account</div>
+    <ul class="sidebar-nav">
+      @{ NavItem("/notifications", "bell", "Notifications", "Auth.Notifications", unread); }
+      @{ NavItem("/profile", "user-round", "Profile", "Auth.Profile"); }
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar">@user.Initial</div>
+        <div class="min-w-0">
+          <div class="name text-truncate">@user.Name</div>
+          <div class="role">@user.Role</div>
+        </div>
+      </div>
+      <form method="post" action="/logout" asp-antiforgery="true">
+        <button class="btn btn-sm btn-logout" type="submit">@Ui.Icon("log-out") Log out</button>
+      </form>
+    </div>
+  </div>
+</aside>

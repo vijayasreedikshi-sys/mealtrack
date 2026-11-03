@@ -1,0 +1,59 @@
+@model NotificationsPageVm
+@{
+    ViewData["Title"] = "Notifications";
+}
+@section PageSub {@Model.Total @(Model.Total == 1 ? "notification" : "notifications") · @Model.Unread unread}
+<div class="card">
+  <div class="card-header">
+    <h2>@Ui.Icon("bell") All notifications</h2>
+    @if (Model.Unread > 0)
+    {
+    <form method="post" action="/notifications/read-all" asp-antiforgery="true">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">@Ui.Icon("check-check") Mark all as read</button>
+    </form>
+    }
+  </div>
+  @if (Model.Items.Count > 0)
+  {
+  <ul class="list-group list-group-flush">
+    @foreach (var n in Model.Items)
+    {
+    <li class="list-group-item d-flex gap-3 align-items-start py-3 @(n.IsRead ? "" : "bg-green-soft")">
+      <span class="stat-icon @(n.IsRead ? "grey" : "")" style="width:2.2rem;height:2.2rem">@Ui.Icon(n.IsRead ? "bell" : "bell-dot")</span>
+      <div class="flex-grow-1 min-w-0">
+        <div class="@(n.IsRead ? "" : "fw-semibold")">@n.Message</div>
+        <div class="small text-muted">@Fmt.Dt(n.CreatedAt) · @Fmt.Ago(n.CreatedAt)</div>
+      </div>
+      @if (n.Link is not null || !n.IsRead)
+      {
+      <form method="post" action="/notifications/@n.Id/open" asp-antiforgery="true">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">@(n.Link is not null ? "Open" : "Mark read")</button>
+      </form>
+      }
+    </li>
+    }
+  </ul>
+  }
+  else
+  {
+    @Ui.EmptyState("bell-off", "No notifications yet", "Deadline reminders and confirmations will appear here.")
+  }
+</div>
+@if (Model.Pages > 1)
+{
+<nav class="mt-3"><ul class="pagination pagination-sm justify-content-end mb-0">
+  <li class="page-item @(Model.Page <= 1 ? "disabled" : "")"><a class="page-link" href="/notifications?page=@(Model.Page - 1)">Previous</a></li>
+  @for (var p = 1; p <= Model.Pages; p++)
+  {
+    if (p == 1 || p == Model.Pages || Math.Abs(p - Model.Page) <= 2)
+    {
+      <li class="page-item @(p == Model.Page ? "active" : "")"><a class="page-link" href="/notifications?page=@p">@p</a></li>
+    }
+    else if (Math.Abs(p - Model.Page) == 3)
+    {
+      <li class="page-item disabled"><span class="page-link">…</span></li>
+    }
+  }
+  <li class="page-item @(Model.Page >= Model.Pages ? "disabled" : "")"><a class="page-link" href="/notifications?page=@(Model.Page + 1)">Next</a></li>
+</ul></nav>
+}

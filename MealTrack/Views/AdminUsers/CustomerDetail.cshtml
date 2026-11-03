@@ -1,0 +1,88 @@
+@model CustomerDetailVm
+@{
+    var u = Model.User;
+    ViewData["Title"] = u.Name;
+}
+@section PageSub {<a href="/admin/customers" class="text-decoration-none">← Back to customers</a>}
+@section TopbarActions {
+  <a href="/admin/customers/@u.Id/edit" class="btn btn-outline-secondary btn-sm">@Ui.Icon("pencil") Edit</a>
+}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-body text-center py-4">
+        <div class="avatar mx-auto mb-3" style="width:4rem;height:4rem;font-size:1.4rem">@u.Initial</div>
+        <h2 class="h5 mb-1">@u.Name</h2>
+        <div class="text-muted small mb-2">@u.Email</div>
+        @Ui.StatusBadge(u.Status)
+        <hr>
+        <dl class="row small text-start mb-0">
+          <dt class="col-5 text-muted fw-normal">Room</dt><dd class="col-7">@(u.RoomNo ?? "—")</dd>
+          <dt class="col-5 text-muted fw-normal">Phone</dt><dd class="col-7">@(u.Phone ?? "—")</dd>
+          <dt class="col-5 text-muted fw-normal">Registered</dt><dd class="col-7 mb-0">@Fmt.Date(u.CreatedAt, "dd MMM yyyy")</dd>
+        </dl>
+      </div>
+      <div class="card-footer bg-transparent d-flex gap-2 justify-content-center">
+        <form method="post" action="/admin/customers/@u.Id/toggle" asp-antiforgery="true">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">@(u.Status == "active" ? "Deactivate" : "Activate")</button>
+        </form>
+        <form method="post" action="/admin/customers/@u.Id/reset-password" asp-antiforgery="true" data-confirm="Reset the password for @u.Name?">
+          <button class="btn btn-sm btn-dark" type="submit">Reset password</button>
+        </form>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-6 col-lg-12">@Ui.StatCard("circle-check", "Meals submitted", Model.Submitted30, "last 30 days")</div>
+      <div class="col-6 col-lg-12">@Ui.StatCard("utensils", "Portions", Model.Portions30, "last 30 days", "dark")</div>
+      <div class="col-6 col-lg-12">@Ui.StatCard("circle-slash", "Not submitted", Model.Missed30, "closed without a count", "grey")</div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card table-card mb-4">
+      <div class="card-header"><h2>@Ui.Icon("history") Count history · last 30 days and next 7</h2></div>
+      @if (Model.Recent.Count > 0)
+      {
+      <div class="table-responsive" style="max-height:560px">
+        <table class="table table-hover table-sm">
+          <thead class="sticky-top"><tr><th>Date</th><th>Meal</th><th>Food</th><th class="text-center">Qty</th><th>Status</th><th class="d-none d-md-table-cell">Updated</th></tr></thead>
+          <tbody>
+          @foreach (var r in Model.Recent)
+          {
+            <tr>
+              <td class="text-nowrap">@Fmt.Date(r.ScheduleDate, "ddd, dd MMM")</td>
+              <td>@Ui.MealChip(r.MealName)</td>
+              <td>@r.FoodName</td>
+              <td class="text-center fw-bold">@(r.Status is "locked" or "submitted" ? r.Quantity.ToString() : "–")</td>
+              <td>@Ui.StatusBadge(r.Status)</td>
+              <td class="d-none d-md-table-cell small text-muted text-nowrap">@(r.UpdatedAt is null ? "—" : Fmt.Dt(r.UpdatedAt, "dd MMM, hh:mm tt"))@if (r.Changes > 1) {<text> · edited @(r.Changes - 1)×</text>}</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("history", "No meals in this period")
+      }
+    </div>
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("calendar-range") Monthly totals</h2></div>
+      @if (Model.Monthly.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Month</th><th class="text-end">Breakfast</th><th class="text-end">Lunch</th><th class="text-end">Dinner</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          @foreach (var m in Model.Monthly) {<tr><td>@m.Label</td><td class="text-end">@m.Breakfast</td><td class="text-end">@m.Lunch</td><td class="text-end">@m.Dinner</td><td class="text-end fw-bold">@m.Total</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar", "No submissions yet")
+      }
+    </div>
+  </div>
+</div>

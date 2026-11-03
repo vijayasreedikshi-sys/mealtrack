@@ -1,0 +1,83 @@
+@model AppUser
+@{
+    ViewData["Title"] = "Profile";
+    ViewData["PageTitle"] = "My Profile";
+}
+@section PageSub {Manage your account details and password}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body text-center py-4">
+        <div class="avatar mx-auto mb-3" style="width:4.5rem;height:4.5rem;font-size:1.6rem">@Model.Initial</div>
+        <h2 class="h5 mb-1">@Model.Name</h2>
+        <div class="text-muted small mb-3">@Model.Email</div>
+        <span class="badge bg-dark text-capitalize">@Model.Role</span> @Ui.StatusBadge(Model.Status)
+        <hr>
+        <dl class="row small text-start mb-0">
+          <dt class="col-5 text-muted fw-normal">Phone</dt><dd class="col-7">@(Model.Phone ?? "—")</dd>
+          @if (Model.Role == Roles.Customer)
+          {
+            <dt class="col-5 text-muted fw-normal">Room</dt><dd class="col-7">@(Model.RoomNo ?? "—")</dd>
+          }
+          <dt class="col-5 text-muted fw-normal">Member since</dt><dd class="col-7 mb-0">@Fmt.Date(Model.CreatedAt, "dd MMM yyyy")</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header"><h2>@Ui.Icon("user-round-pen") Personal details</h2></div>
+      <div class="card-body">
+        <form method="post" asp-antiforgery="true" novalidate>
+          <input type="hidden" name="action" value="details">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="name">Full name</label>
+              <input class="form-control" id="name" name="name" value="@Model.Name" required maxlength="100">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="email">Email</label>
+              <input class="form-control" id="email" value="@Model.Email" disabled>
+              <div class="form-text">Contact the admin to change your email.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="phone">Phone</label>
+              <input class="form-control" id="phone" name="phone" value="@Model.Phone" maxlength="15">
+            </div>
+            @if (Model.Role == Roles.Customer)
+            {
+            <div class="col-md-6">
+              <label class="form-label" for="room_no">Room no.</label>
+              <input class="form-control" id="room_no" name="room_no" value="@Model.RoomNo" maxlength="20">
+            </div>
+            }
+          </div>
+          <button class="btn btn-primary mt-4" type="submit">@Ui.Icon("save") Save changes</button>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>@Ui.Icon("lock-keyhole") Change password</h2></div>
+      <div class="card-body">
+        <form method="post" asp-antiforgery="true" novalidate>
+          <input type="hidden" name="action" value="password">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="current_password">Current password</label>
+              <input class="form-control" type="password" id="current_password" name="current_password" required autocomplete="current-password">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="new_password">New password</label>
+              <input class="form-control" type="password" id="new_password" name="new_password" required autocomplete="new-password">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="confirm_password">Confirm new password</label>
+              <input class="form-control" type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+            </div>
+          </div>
+          <button class="btn btn-dark mt-4" type="submit">@Ui.Icon("key-round") Update password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

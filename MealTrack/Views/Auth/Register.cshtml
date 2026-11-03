@@ -1,0 +1,40 @@
+@model RegisterForm
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Register";
+}
+<h2 class="h3 mb-1">Create your account</h2>
+<p class="text-muted mb-4">Register as a resident to submit your daily food counts.</p>
+<form method="post" asp-antiforgery="true" novalidate>
+  <div class="mb-3">
+    <label class="form-label" for="name">Full name</label>
+    <input class="form-control" id="name" name="name" value="@Model.Name" required maxlength="100" autocomplete="name">
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="email">Email</label>
+    <input class="form-control" type="email" id="email" name="email" value="@Model.Email" required maxlength="150" autocomplete="email">
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-7">
+      <label class="form-label" for="phone">Phone</label>
+      <input class="form-control" id="phone" name="phone" value="@Model.Phone" required maxlength="15" autocomplete="tel">
+    </div>
+    <div class="col-5">
+      <label class="form-label" for="room_no">Room no. <span class="text-muted fw-normal">(optional)</span></label>
+      <input class="form-control" id="room_no" name="room_no" value="@Model.RoomNo" maxlength="20">
+    </div>
+  </div>
+  <div class="row g-3 mb-1">
+    <div class="col-sm-6">
+      <label class="form-label" for="password">Password</label>
+      <input class="form-control" type="password" id="password" name="password" required autocomplete="new-password">
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label" for="confirm_password">Confirm password</label>
+      <input class="form-control" type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+    </div>
+  </div>
+  <div class="form-text">At least 8 characters, with letters and numbers.</div>
+  <button class="btn btn-primary w-100 mt-4 py-2" type="submit">Create account</button>
+</form>
+<p class="text-center text-muted small mt-4">Already registered? <a href="/login" class="fw-semibold text-decoration-none">Log in</a></p>

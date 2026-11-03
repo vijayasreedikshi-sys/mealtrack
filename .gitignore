@@ -1,13 +1,13 @@
-# Secrets – never commit (contains DB password and SECRET_KEY)
-.env
+# Machine-specific settings (contains the MySQL password) – never commit
+appsettings.Local.json
 
-# Python
-venv/
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-*.egg-info/
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
 
 # Exports / logs
 *.log
@@ -18,6 +18,3 @@ exports/
 .idea/
 Thumbs.db
 .DS_Store
-
-# Flask instance folder
-instance/

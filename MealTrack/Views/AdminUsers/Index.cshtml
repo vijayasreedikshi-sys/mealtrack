@@ -1,0 +1,89 @@
+@model UsersVm
+@{
+    var sellers = Model.Kind == "sellers";
+    ViewData["Title"] = sellers ? "Sellers" : "Customers";
+    ViewData["PageTitle"] = sellers ? "Manage Sellers" : "Manage Customers";
+}
+@section PageSub {@(sellers ? "Kitchen staff who prepare the meals" : "Residents who submit food counts")}
+@section TopbarActions {
+  <a href="/admin/@Model.Kind/new" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("user-plus") Add @Model.Label.ToLowerInvariant()</a>
+}
+<div class="row g-3 mb-4">
+  <div class="col-4">@Ui.StatCard(sellers ? "chef-hat" : "users", $"Total {Model.Kind}", Model.Total)</div>
+  <div class="col-4">@Ui.StatCard("circle-check", "Active", Model.Active, "can log in")</div>
+  <div class="col-4">@Ui.StatCard("circle-pause", "Inactive", Model.Total - Model.Active, sellers ? "can't log in" : "excluded from totals", "grey")</div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header">
+    <form class="d-flex flex-wrap gap-2 flex-grow-1" method="get">
+      <div class="input-group" style="max-width:320px">
+        <span class="input-group-text">@Ui.Icon("search")</span>
+        <input class="form-control" type="search" name="q" value="@Model.Q" placeholder="@(sellers ? "Name, email or phone" : "Name, email, phone or room")">
+      </div>
+      <select class="form-select" name="status" style="max-width:170px" onchange="this.form.submit()">
+        <option value="">All statuses</option>
+        <option value="active" selected="@(Model.Status == "active")">Active</option>
+        <option value="inactive" selected="@(Model.Status == "inactive")">Inactive</option>
+      </select>
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+      @if (Model.Q != "" || Model.Status != "") {<a class="btn btn-link text-decoration-none" href="/admin/@Model.Kind">Clear</a>}
+    </form>
+    <a href="/admin/@Model.Kind/new" class="btn btn-primary btn-sm d-md-none">@Ui.Icon("user-plus") Add</a>
+  </div>
+  @if (Model.Users.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Name</th>
+          @if (!sellers) {<th>Room</th>}
+          <th class="d-none d-md-table-cell">Phone</th>
+          @if (sellers)
+          {
+            <th>Responsible for</th><th class="text-end">Upcoming meals</th>
+          }
+          else
+          {
+            <th class="text-end">Meals (30 days)</th><th class="text-end">Portions (30 days)</th>
+          }
+          <th class="d-none d-lg-table-cell">Last activity</th><th>Status</th><th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      @foreach (var u in Model.Users)
+      {
+        <tr class="@(u.Status == "inactive" ? "opacity-75" : "")">
+          <td><a class="fw-semibold text-reset text-decoration-none" href="/admin/@Model.Kind/@u.Id">@u.Name</a><div class="small text-muted">@u.Email</div></td>
+          @if (!sellers) {<td>@(u.RoomNo ?? "—")</td>}
+          <td class="d-none d-md-table-cell small">@(u.Phone ?? "—")</td>
+          @if (sellers)
+          {
+            <td class="small">@(u.MealDefaults ?? "—")</td><td class="text-end">@u.UpcomingAssignments</td>
+          }
+          else
+          {
+            <td class="text-end">@u.Submissions30</td><td class="text-end fw-semibold">@u.Portions30</td>
+          }
+          <td class="d-none d-lg-table-cell small text-muted">@(u.LastActivity is null ? "—" : Fmt.Ago(u.LastActivity))</td>
+          <td>@Ui.StatusBadge(u.Status)</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary btn-icon" href="/admin/@Model.Kind/@u.Id" title="Details" aria-label="Details for @u.Name">@Ui.Icon("eye")</a>
+            <a class="btn btn-sm btn-outline-secondary btn-icon" href="/admin/@Model.Kind/@u.Id/edit" title="Edit" aria-label="Edit @u.Name">@Ui.Icon("pencil")</a>
+            <form class="d-inline" method="post" action="/admin/@Model.Kind/@u.Id/toggle" asp-antiforgery="true">
+              <button class="btn btn-sm btn-outline-secondary btn-icon" type="submit" title="@(u.Status == "active" ? "Deactivate" : "Activate")"
+                      aria-label="@(u.Status == "active" ? "Deactivate" : "Activate") @u.Name">@Ui.Icon(u.Status == "active" ? "user-x" : "user-check")</button>
+            </form>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("users", $"No {Model.Kind} found", "Try a different search, or add a new one.")
+  }
+</div>

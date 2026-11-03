@@ -1,0 +1,101 @@
+@model SellerDashboardVm
+@{
+    ViewData["Title"] = "Seller Dashboard";
+    ViewData["PageTitle"] = $"Hello, {Context.CurrentUser()!.FirstName}";
+    var sel = Fmt.IsoDate(Model.Selected);
+}
+@section PageSub {Cooking requirements for @Fmt.Date(Model.Selected, "dddd, dd MMMM yyyy")}
+@section TopbarActions {
+  <a href="/seller/requirements?date=@sel" class="btn btn-primary btn-sm d-none d-md-inline-flex">@Ui.Icon("printer") Requirements sheet</a>
+}
+<form class="d-flex gap-2 align-items-center mb-3" method="get">
+  <a class="btn btn-outline-secondary btn-sm btn-icon" href="/seller?date=@Fmt.IsoDate(Model.Selected.AddDays(-1))" aria-label="Previous day">@Ui.Icon("chevron-left")</a>
+  <input class="form-control form-control-sm" type="date" name="date" value="@sel" onchange="this.form.submit()" style="max-width:180px">
+  <a class="btn btn-outline-secondary btn-sm btn-icon" href="/seller?date=@Fmt.IsoDate(Model.Selected.AddDays(1))" aria-label="Next day">@Ui.Icon("chevron-right")</a>
+  <a class="btn btn-sm btn-outline-secondary" href="/seller">Today</a>
+</form>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-4">
+    <div class="big-total h-100 d-flex flex-column justify-content-center">
+      <div class="label mb-2">Total cooking quantity</div>
+      <div class="num">@Model.Total</div>
+      <div class="label mt-2">portions across @Model.Rows.Count assigned @(Model.Rows.Count == 1 ? "meal" : "meals")</div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card table-card h-100">
+      <div class="card-header"><h2>@Ui.Icon("chef-hat") Assigned meals</h2></div>
+      @if (Model.Rows.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Meal</th><th>Food</th><th class="text-end">Required</th><th style="min-width:160px">Prepared</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+          @foreach (var r in Model.Rows)
+          {
+            var pct = r.TotalQty == 0 ? (r.PreparedQuantity > 0 ? 100 : 0) : Math.Min(100, (r.PreparedQuantity ?? 0) * 100 / r.TotalQty);
+            <tr>
+              <td>@Ui.MealChip(r.MealName)</td>
+              <td><div class="fw-semibold">@r.FoodName</div><div class="small text-muted">@r.Submitters customers · cutoff @Fmt.Time(r.CutoffTime)</div></td>
+              <td class="text-end"><span class="fw-bold fs-5">@r.TotalQty</span><div>@Ui.StatusBadge(r.Final ? "final" : "open")</div></td>
+              <td>
+                <div class="d-flex justify-content-between small"><span>@(r.PreparedQuantity?.ToString() ?? "—")</span><span class="text-muted">@pct%</span></div>
+                <div class="progress prep-bar"><div class="progress-bar" style="width:@pct%"></div></div>
+              </td>
+              <td>@Ui.StatusBadge(r.PreparationStatus)</td>
+              <td class="text-end">
+                @if (r.ScheduleDate <= DateTime.Today)
+                {
+                  <a class="btn btn-sm @(r.PreparationStatus == "completed" ? "btn-outline-secondary" : "btn-primary")" href="/seller/prep/@r.ScheduleId">@(r.PreparationStatus == "not_started" ? "Start" : "Update")</a>
+                }
+                @if (r.ScheduleDate == DateTime.Today)
+                {
+                  <a class="btn btn-sm btn-outline-secondary" href="/attendance/@r.ScheduleId" title="Show check-in QR">@Ui.Icon("qr-code") QR</a>
+                }
+              </td>
+            </tr>
+          }
+          </tbody>
+          <tfoot><tr><td colspan="2">Total</td><td class="text-end text-green fs-5">@Model.Total</td><td colspan="3"></td></tr></tfoot>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar-x", "No meals assigned to you on this date")
+      }
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card table-card h-100">
+      <div class="card-header"><h2>@Ui.Icon("calendar-range") Coming up · next 7 days</h2><a class="btn btn-sm btn-outline-secondary" href="/seller/assignments">All assignments</a></div>
+      @if (Model.Upcoming.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Date</th><th>Meal</th><th>Food</th><th class="text-end">Count so far</th></tr></thead>
+          <tbody>
+          @foreach (var r in Model.Upcoming)
+          {
+            <tr><td class="text-nowrap">@Fmt.Date(r.ScheduleDate, "ddd, dd MMM")</td><td>@Ui.MealChip(r.MealName)</td><td>@r.FoodName</td><td class="text-end fw-semibold">@r.TotalQty</td></tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar", "Nothing scheduled for the next week yet")
+      }
+    </div>
+  </div>
+  <div class="col-lg-4">
+    @Ui.StatCard("leaf", "Wastage last 7 days", $"{Model.RecentWastagePct}%", $"{Model.RecentWasted} of {Model.RecentPrepared} portions prepared", "grey")
+    <a class="btn btn-outline-secondary w-100 mt-3" href="/seller/history">@Ui.Icon("history") Preparation history</a>
+  </div>
+</div>
+<p class="small text-muted mt-3 mb-0">"Open" totals can still change until the meal's cutoff. "Final" totals are locked.</p>

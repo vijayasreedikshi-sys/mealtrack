@@ -1,0 +1,110 @@
+@model SellerDetailVm
+@{
+    var u = Model.User;
+    ViewData["Title"] = u.Name;
+}
+@section PageSub {<a href="/admin/sellers" class="text-decoration-none">← Back to sellers</a>}
+@section TopbarActions {
+  <a href="/admin/sellers/@u.Id/edit" class="btn btn-outline-secondary btn-sm">@Ui.Icon("pencil") Edit</a>
+}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-body text-center py-4">
+        <div class="avatar mx-auto mb-3" style="width:4rem;height:4rem;font-size:1.4rem">@u.Initial</div>
+        <h2 class="h5 mb-1">@u.Name</h2>
+        <div class="text-muted small mb-2">@u.Email · @(u.Phone ?? "no phone")</div>
+        @Ui.StatusBadge(u.Status)
+      </div>
+      <div class="card-footer bg-transparent d-flex gap-2 justify-content-center">
+        <form method="post" action="/admin/sellers/@u.Id/toggle" asp-antiforgery="true">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">@(u.Status == "active" ? "Deactivate" : "Activate")</button>
+        </form>
+        <form method="post" action="/admin/sellers/@u.Id/reset-password" asp-antiforgery="true" data-confirm="Reset the password for @u.Name?">
+          <button class="btn btn-sm btn-dark" type="submit">Reset password</button>
+        </form>
+      </div>
+    </div>
+
+    <form class="card" method="post" action="/admin/sellers/@u.Id/defaults" asp-antiforgery="true">
+      <div class="card-header"><h2>@Ui.Icon("chef-hat") Responsibilities</h2></div>
+      <div class="card-body">
+        <p class="small text-muted">The seller is assigned to every meal of the ticked types, including upcoming ones.</p>
+        @foreach (var m in Model.MealTypes)
+        {
+          var d = Model.Defaults.GetValueOrDefault(m.Id);
+          <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" id="@($"meal_{m.Id}")" name="@($"meal_{m.Id}")" value="1" checked="@(d is not null)">
+              <label class="form-check-label fw-semibold" for="@($"meal_{m.Id}")">@m.MealName</label>
+            </div>
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" id="@($"view_{m.Id}")" name="@($"view_{m.Id}")" value="1" checked="@(d?.CanViewCustomers == true)">
+              <label class="form-check-label small" for="@($"view_{m.Id}")">See customer names</label>
+            </div>
+          </div>
+        }
+        <button class="btn btn-primary btn-sm mt-3" type="submit">@Ui.Icon("save") Save responsibilities</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card table-card mb-4">
+      <div class="card-header"><h2>@Ui.Icon("calendar-days") Upcoming assignments · next 14 days</h2></div>
+      @if (Model.Upcoming.Count > 0)
+      {
+      <div class="table-responsive" style="max-height:360px">
+        <table class="table table-sm table-hover">
+          <thead class="sticky-top"><tr><th>Date</th><th>Meal</th><th>Food</th><th class="text-end">Required</th><th>Prep</th></tr></thead>
+          <tbody>
+          @foreach (var a in Model.Upcoming)
+          {
+            <tr>
+              <td class="text-nowrap">@Fmt.Date(a.ScheduleDate, "ddd, dd MMM")</td>
+              <td>@Ui.MealChip(a.MealName)</td>
+              <td><a class="text-reset" href="/admin/schedules/@a.ScheduleId/edit">@a.FoodName</a></td>
+              <td class="text-end fw-semibold">@a.TotalQty @Ui.StatusBadge(a.Final ? "final" : "open")</td>
+              <td>@Ui.StatusBadge(a.PreparationStatus)</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("calendar-x", "No upcoming published meals assigned")
+      }
+    </div>
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("activity") Preparation activity</h2><a class="btn btn-sm btn-outline-secondary" href="/admin/reports?type=wastage">Wastage report</a></div>
+      @if (Model.Activity.Count > 0)
+      {
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Meal</th><th class="text-end">Required</th><th class="text-end">Prepared</th><th class="text-end">Wasted</th><th class="text-end">Wastage</th><th>Status</th><th class="d-none d-md-table-cell">Updated</th></tr></thead>
+          <tbody>
+          @foreach (var p in Model.Activity)
+          {
+            <tr>
+              <td><div class="fw-semibold">@p.MealName · @p.FoodName</div><div class="small text-muted">@Fmt.Date(p.ScheduleDate, "ddd, dd MMM")</div></td>
+              <td class="text-end">@p.RequiredQuantity</td>
+              <td class="text-end">@p.PreparedQuantity</td>
+              <td class="text-end">@p.WastedQuantity</td>
+              <td class="text-end">@p.WastagePct%</td>
+              <td>@Ui.StatusBadge(p.PreparationStatus)</td>
+              <td class="d-none d-md-table-cell small text-muted">@Fmt.Ago(p.UpdatedAt)</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("activity", "No preparation updates yet")
+      }
+    </div>
+  </div>
+</div>

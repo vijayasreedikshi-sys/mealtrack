@@ -1,0 +1,187 @@
+@model ScheduleEditVm
+@{
+    var s = Model.Schedule;
+    var isNew = s is null;
+    ViewData["Title"] = isNew ? "Add Meal" : "Edit Meal";
+    ViewData["PageTitle"] = isNew ? "Schedule a meal" : $"{s!.MealName} · {Fmt.Date(s.ScheduleDate, "ddd, dd MMM yyyy")}";
+    var week = Fmt.IsoDate(Validators.WeekStart(Model.Date == default ? DateTime.Today : Model.Date));
+}
+@section PageSub {<a href="/admin/schedules?week=@week" class="text-decoration-none">← Back to schedules</a>}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h2>@Ui.Icon("calendar-days") @(isNew ? "New meal" : s!.FoodName)</h2>
+        @if (!isNew) { @Ui.StatusBadge(s!.IsPublished ? "published" : "draft") }
+      </div>
+      <div class="card-body">
+        <form method="post" asp-antiforgery="true" novalidate>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="date">Date</label>
+              @if (isNew)
+              {
+                <input class="form-control" type="date" id="date" name="date" value="@Fmt.IsoDate(Model.Date)" required>
+              }
+              else
+              {
+                <input class="form-control" value="@Fmt.Date(s!.ScheduleDate, "dddd, dd MMM yyyy")" disabled>
+              }
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="meal_type_id">Meal</label>
+              @if (isNew)
+              {
+                <select class="form-select" id="meal_type_id" name="meal_type_id">
+                  @foreach (var m in Model.MealTypes) {<option value="@m.Id" selected="@(m.Id == Model.MealTypeId)">@m.MealName</option>}
+                </select>
+              }
+              else
+              {
+                <input class="form-control" value="@s!.MealName" disabled>
+              }
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="food_item_id">Food item</label>
+            <select class="form-select" id="food_item_id" name="food_item_id" required>
+              <option value="">Choose a food…</option>
+              @foreach (var f in Model.Foods.Where(f => f.Status == "active" || f.Id == Model.FoodItemId))
+              {
+                <option value="@f.Id" selected="@(f.Id == Model.FoodItemId)">@f.FoodName (@f.Unit)@(f.Status == "inactive" ? " – inactive" : "")</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="cutoff">Cutoff time</label>
+            <input class="form-control" type="datetime-local" id="cutoff" name="cutoff" value="@Model.Cutoff">
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" id="use_default_cutoff" name="use_default_cutoff" value="1" checked="@Model.UseDefaultCutoff">
+              <label class="form-check-label" for="use_default_cutoff">Use the default cutoff for this meal (<a href="/admin/cutoffs">Manage cutoff times</a>)</label>
+            </div>
+            <div class="form-text">Customers can enter or change counts until this time. Moving it later re-opens locked counts.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="notes">Note for customers <span class="text-muted fw-normal">(optional)</span></label>
+            <input class="form-control" id="notes" name="notes" value="@Model.Notes" maxlength="255" placeholder="e.g. Special Diwali menu">
+          </div>
+          <div class="form-check form-switch mb-4">
+            <input class="form-check-input" type="checkbox" role="switch" id="is_published" name="is_published" value="1" checked="@Model.IsPublished">
+            <label class="form-check-label" for="is_published">Published (visible to customers)</label>
+          </div>
+
+          @if (!isNew)
+          {
+          <h3 class="h6 mb-2">@Ui.Icon("chef-hat") Assigned sellers</h3>
+          @if (Model.Sellers.Count == 0)
+          {
+            <p class="small text-muted">No sellers yet. <a href="/admin/sellers/new">Add a seller</a>.</p>
+          }
+          <div class="table-responsive mb-4">
+            <table class="table table-sm mb-0">
+              <tbody>
+              @foreach (var seller in Model.Sellers)
+              {
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" id="@($"seller_{seller.Id}")" name="seller_ids" value="@seller.Id" checked="@seller.Assigned">
+                      <label class="form-check-label" for="@($"seller_{seller.Id}")">@seller.Name @if (seller.Status != "active") {<span class="small text-muted">(inactive)</span>}</label>
+                    </div>
+                  </td>
+                  <td class="text-end">
+                    <div class="form-check form-check-inline mb-0">
+                      <input class="form-check-input" type="checkbox" id="@($"view_{seller.Id}")" name="@($"view_{seller.Id}")" value="1" checked="@seller.CanViewCustomers">
+                      <label class="form-check-label small" for="@($"view_{seller.Id}")">May see customer names</label>
+                    </div>
+                  </td>
+                </tr>
+              }
+              </tbody>
+            </table>
+          </div>
+          }
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit">@Ui.Icon("save") @(isNew ? "Add meal" : "Save changes")</button>
+            <a class="btn btn-outline-secondary" href="/admin/schedules?week=@week">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    @if (!isNew)
+    {
+    <div class="card card-muted">
+      <div class="card-body">
+        <h2 class="h6">@Ui.Icon("trash-2", "me-1") Delete this meal</h2>
+        <form method="post" action="/admin/schedules/@s!.Id/delete" asp-antiforgery="true" data-confirm="Delete @s.MealName on @Fmt.Date(s.ScheduleDate, "ddd dd MMM")?">
+          @if (Model.CountRows > 0)
+          {
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="confirm" name="confirm" value="1">
+              <label class="form-check-label small" for="confirm">I understand this also deletes <strong>@Model.CountRows</strong> customer count(s) for this meal.</label>
+            </div>
+          }
+          <button class="btn btn-sm btn-outline-danger" type="submit">Delete meal</button>
+        </form>
+      </div>
+    </div>
+    }
+  </div>
+
+  <div class="col-lg-5">
+    @if (!isNew)
+    {
+    <div class="big-total mb-4">
+      <div class="label mb-2">Required quantity @(s!.CutoffTime <= DateTime.Now ? "(final)" : "(live)")</div>
+      <div class="num">@s.TotalQty</div>
+      <div class="label mt-2">@s.Submitters submitted · @Model.PendingCustomers.Count pending</div>
+    </div>
+    <div class="card table-card mb-4">
+      <div class="card-header"><h2>@Ui.Icon("users") Customer-wise counts</h2></div>
+      @if (Model.Breakdown.Count > 0)
+      {
+      <div class="table-responsive" style="max-height:320px">
+        <table class="table table-sm">
+          <thead class="sticky-top"><tr><th>Customer</th><th>Room</th><th class="text-end">Qty</th></tr></thead>
+          <tbody>
+          @foreach (var b in Model.Breakdown) {<tr><td>@b.Name</td><td>@b.RoomNo</td><td class="text-end fw-semibold">@b.Quantity</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      }
+      else
+      {
+        @Ui.EmptyState("clipboard-list", "No counts submitted yet")
+      }
+    </div>
+    @if (Model.PendingCustomers.Count > 0)
+    {
+    <div class="card table-card">
+      <div class="card-header"><h2>@Ui.Icon("hourglass") Not submitted</h2><span class="small text-muted">@Model.PendingCustomers.Count customers</span></div>
+      <div class="table-responsive" style="max-height:280px">
+        <table class="table table-sm">
+          <tbody>
+          @foreach (var p in Model.PendingCustomers) {<tr><td>@p.Name</td><td>@p.RoomNo</td><td class="text-muted small">@p.Phone</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    }
+    }
+    else
+    {
+    <div class="card card-muted">
+      <div class="card-body small text-muted">
+        <h2 class="h6 text-black">@Ui.Icon("lightbulb", "me-1") Tips</h2>
+        <ul class="ps-3 mb-0">
+          <li>Sellers with a default responsibility for this meal are assigned automatically.</li>
+          <li>Use the week builder to plan a whole week at once.</li>
+          <li>Drafts are hidden from customers until you publish them.</li>
+        </ul>
+      </div>
+    </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,63 @@
+@model ReportsVm
+@{
+    ViewData["Title"] = "Reports";
+    var t = Model.Table;
+    var q = $"type={Model.Type}&start={Fmt.IsoDate(Model.Start)}&end={Fmt.IsoDate(Model.End)}";
+    string Cell(object? v) => v switch { null => "", decimal d => d.ToString("0.##"), _ => v.ToString() ?? "" };
+}
+@section PageSub {@t.Title · @t.Description}
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+  @foreach (var (key, label, icon) in ReportsVm.Types)
+  {
+    <a class="btn btn-sm @(Model.Type == key ? "btn-dark" : "btn-outline-secondary")" href="/admin/reports?type=@key">@Ui.Icon(icon) @label</a>
+  }
+</div>
+
+<form class="card card-body mb-4 no-print" method="get">
+  <input type="hidden" name="type" value="@Model.Type">
+  <div class="row g-3 align-items-end">
+    <div class="col-6 col-md-3">
+      <label class="form-label" for="start">From</label>
+      <input class="form-control" type="date" id="start" name="start" value="@Fmt.IsoDate(Model.Start)">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label" for="end">To</label>
+      <input class="form-control" type="date" id="end" name="end" value="@Fmt.IsoDate(Model.End)">
+    </div>
+    <div class="col-md-6 d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">@Ui.Icon("filter") Apply</button>
+      <a class="btn btn-outline-secondary" href="/admin/reports?@q&format=csv">@Ui.Icon("file-text") Export CSV</a>
+      <a class="btn btn-outline-secondary" href="/admin/reports?@q&format=xlsx">@Ui.Icon("file-spreadsheet") Export Excel</a>
+      <button class="btn btn-outline-secondary" type="button" onclick="window.print()">@Ui.Icon("printer") Print</button>
+    </div>
+  </div>
+</form>
+
+<div class="print-only mb-3"><h1 class="h4">MealTrack – @t.Title</h1><div class="text-muted">@t.Description</div></div>
+
+<div class="card table-card">
+  <div class="card-header"><h2>@Ui.Icon("table") @t.Title</h2><span class="small text-muted">@t.Rows.Count rows</span></div>
+  @if (t.Rows.Count > 0)
+  {
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0">
+      <thead><tr>@for (var c = 0; c < t.Columns.Count; c++) {<th class="@(t.NumericColumns.Contains(c) ? "text-end" : "")">@t.Columns[c]</th>}</tr></thead>
+      <tbody>
+      @foreach (var row in t.Rows)
+      {
+        <tr>@for (var c = 0; c < row.Length; c++) {<td class="@(t.NumericColumns.Contains(c) ? "text-end" : "") @(c == 0 ? "text-nowrap fw-semibold" : "")">@Cell(row[c])</td>}</tr>
+      }
+      </tbody>
+      @if (t.Footer is not null)
+      {
+        <tfoot><tr>@for (var c = 0; c < t.Footer.Length; c++) {<td class="@(t.NumericColumns.Contains(c) ? "text-end" : "")">@Cell(t.Footer[c])</td>}</tr></tfoot>
+      }
+    </table>
+  </div>
+  }
+  else
+  {
+    @Ui.EmptyState("table", "No data for this period")
+  }
+</div>
+<p class="small text-muted mt-3 mb-0">Consumption counts only submitted and locked counts. Wastage % = wasted ÷ prepared × 100. Estimated cost uses each food item's price.</p>

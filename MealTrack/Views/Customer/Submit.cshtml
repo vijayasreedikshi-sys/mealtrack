@@ -1,0 +1,121 @@
+@model SubmitVm
+@{
+    ViewData["Title"] = "Submit Food Count";
+    var today = DateTime.Today;
+    var sel = Fmt.IsoDate(Model.Selected);
+}
+@section PageSub {
+  @if (Model.View == "week") {<text>Week of @Fmt.Date(Model.Start, "dd MMM") – @Fmt.Date(Model.End, "dd MMM yyyy")</text>}
+  else {@Fmt.Date(Model.Selected, "dddd, dd MMMM yyyy")}
+}
+<div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+  <div class="segmented">
+    <a class="@(Model.View == "day" ? "active" : "")" href="/customer/submit?date=@sel&view=day">Day</a>
+    <a class="@(Model.View == "week" ? "active" : "")" href="/customer/submit?date=@sel&view=week">Week</a>
+  </div>
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <input type="hidden" name="view" value="@Model.View">
+    <a class="btn btn-outline-secondary btn-sm btn-icon" href="/customer/submit?date=@Fmt.IsoDate(Model.PrevDate)&view=@Model.View" aria-label="Previous">@Ui.Icon("chevron-left")</a>
+    <input class="form-control form-control-sm" type="date" name="date" value="@sel" onchange="this.form.submit()" style="max-width:170px">
+    <a class="btn btn-outline-secondary btn-sm btn-icon" href="/customer/submit?date=@Fmt.IsoDate(Model.NextDate)&view=@Model.View" aria-label="Next">@Ui.Icon("chevron-right")</a>
+  </form>
+</div>
+
+@if (Model.Grouped.Count > 0)
+{
+<form id="countForm" method="post" action="/customer/submit" asp-antiforgery="true" novalidate>
+  <input type="hidden" name="view" value="@Model.View">
+  <input type="hidden" name="date" value="@sel">
+
+  <div class="card">
+    @if (Model.AnyOpen)
+    {
+    <div class="card-header bg-grey-soft">
+      <div class="small text-muted">@Ui.Icon("info", "me-1") Quick fill applies only to meals that are still open.</div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="last">@Ui.Icon("copy") Copy last week</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="one">@Ui.Icon("plus") All 1</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="zero">@Ui.Icon("circle-off") All 0</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fill="clear">@Ui.Icon("rotate-ccw") Reset</button>
+      </div>
+    </div>
+    }
+
+    @{ var first = true; }
+    @foreach (var group in Model.Grouped)
+    {
+    var d = group.Key;
+    var iso = Fmt.IsoDate(d);
+    <div class="@(first ? "" : "border-top")" id="@($"day-{iso}")">
+      <div class="d-flex justify-content-between align-items-center px-3 px-md-4 pt-3">
+        <div>
+          <div class="fw-semibold">@Fmt.Date(d, "dddd, dd MMM")@if (d == today) {<text> <span class="badge bg-green-soft text-green ms-1">Today</span></text>}</div>
+        </div>
+        <div class="small text-muted">Day total: <strong class="text-black" data-day-total="@iso">0</strong></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Meal</th><th>Scheduled food</th><th class="d-none d-md-table-cell">Cutoff</th><th>Status</th><th class="text-end">Required quantity</th></tr>
+          </thead>
+          <tbody>
+          @foreach (var r in group)
+          {
+            var current = r.HasValue ? r.Quantity?.ToString() ?? "" : "";
+            <tr>
+              <td>@Ui.MealChip(r.MealName)</td>
+              <td>
+                <div class="fw-semibold">@r.FoodName</div>
+                <div class="small text-muted">@(r.Description)@if (r.Price is > 0) {<text> · ₹@r.Price.Value.ToString("0")/@r.Unit</text>}</div>
+                @if (!string.IsNullOrEmpty(r.Notes)) {<div class="small text-green">@r.Notes</div>}
+              </td>
+              <td class="d-none d-md-table-cell small">
+                @Fmt.Dt(r.CutoffTime, "ddd dd MMM, hh:mm tt")
+                @if (r.IsOpen) {<div class="text-muted">in <span class="countdown" data-countdown="@Fmt.Iso(r.CutoffTime)"></span></div>}
+              </td>
+              <td>@Ui.StatusBadge(r.Status)</td>
+              <td class="text-end">
+                <div class="qty-stepper">
+                  <button type="button" data-step="-1" disabled="@(!r.IsOpen)" aria-label="Decrease">@Ui.Icon("minus")</button>
+                  <input class="qty-input" type="number" inputmode="numeric" min="0" max="@Model.MaxQty" step="1"
+                         name="@($"qty_{r.Id}")" value="@current" placeholder="–"
+                         data-original="@current" data-day="@iso"
+                         data-last="@(r.LastWeekQty?.ToString() ?? "")"
+                         aria-label="@r.MealName quantity" disabled="@(!r.IsOpen)">
+                  <button type="button" data-step="1" disabled="@(!r.IsOpen)" aria-label="Increase">@Ui.Icon("plus")</button>
+                </div>
+              </td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    first = false;
+    }
+
+    <div class="submit-bar">
+      <span class="total-pill">Total portions <strong id="liveTotal">0</strong></span>
+      <span class="small text-muted" id="changedCount"></span>
+      <div class="ms-auto d-flex gap-2">
+        @if (Model.AnyOpen)
+        {
+        <button class="btn btn-primary" id="submitCounts" type="submit">@Ui.Icon("send") Submit count</button>
+        }
+        else
+        {
+        <span class="status status-locked">All meals shown are closed</span>
+        }
+      </div>
+    </div>
+  </div>
+</form>
+<p class="small text-muted mt-3 mb-0">
+  Leave a meal blank if you haven't decided yet (it stays <em>Pending</em>). Enter <strong>0</strong> if you don't need it.
+  You can update your count as many times as you like until the cutoff, after which it is <em>Locked</em>.
+</p>
+}
+else
+{
+  <div class="card">@Ui.EmptyState("calendar-x", $"No published menu for this {Model.View}", "Try another date or check the weekly schedule.")</div>
+}
