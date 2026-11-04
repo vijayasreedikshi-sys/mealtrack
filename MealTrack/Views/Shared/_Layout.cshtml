@@ -64,7 +64,21 @@
             <a class="d-block text-center py-2 small fw-semibold text-decoration-none" href="/notifications">View all</a>
           </div>
         </div>
-        <a href="/profile" class="avatar light text-decoration-none d-none d-sm-grid" title="Profile">@user.Initial</a>
+        <div class="dropdown d-none d-sm-block">
+          <button class="avatar light border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">@user.Initial</button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li class="px-3 py-2 border-bottom">
+              <div class="fw-semibold small">@user.Name</div>
+              <div class="text-muted small text-capitalize">@user.Role</div>
+            </li>
+            <li><a class="dropdown-item d-flex align-items-center gap-2" href="/profile">@Ui.Icon("user-round") Profile</a></li>
+            <li>
+              <form method="post" action="/logout" asp-antiforgery="true">
+                <button class="dropdown-item d-flex align-items-center gap-2" type="submit">@Ui.Icon("log-out") Log out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
 

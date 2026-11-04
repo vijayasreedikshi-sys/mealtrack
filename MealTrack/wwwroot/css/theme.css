@@ -192,7 +192,8 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { color: var(--mt-black); f
   .sidebar { position: fixed; inset: 0 auto 0 0; width: var(--mt-sidebar-w); z-index: 1030; display: flex; flex-direction: column; }
   .app-main { margin-left: var(--mt-sidebar-w); }
 }
-.sidebar .offcanvas-body { display: flex; flex-direction: column; padding: 0; height: 100%; }
+/* Scrolls when the menu is taller than the screen (admin), keeping the footer pinned. */
+.sidebar .offcanvas-body { display: flex; flex-direction: column; padding: 0; height: 100%; overflow-y: auto; }
 .sidebar-brand { display: flex; align-items: center; gap: .7rem; padding: 1.35rem 1.25rem 1.1rem; color: var(--mt-white); text-decoration: none; }
 .sidebar-brand img { width: 36px; height: 36px; }
 .brand-name { font-weight: 700; font-size: 1.15rem; letter-spacing: -.02em; color: var(--mt-white); line-height: 1.1; }
@@ -208,7 +209,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { color: var(--mt-black); f
 .sidebar-nav a.active { background: var(--mt-green); color: var(--mt-white); }
 .sidebar-nav .nav-badge { margin-left: auto; background: var(--mt-green); color: var(--mt-white); border-radius: 999px; font-size: .68rem; padding: .1rem .45rem; font-weight: 700; }
 .sidebar-nav a.active .nav-badge { background: var(--mt-white); color: var(--mt-green); }
-.sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid rgba(255, 255, 255, .08); }
+.sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid rgba(255, 255, 255, .08); position: sticky; bottom: 0; background: var(--mt-black); }
 .sidebar-user { display: flex; align-items: center; gap: .7rem; color: var(--mt-white); }
 .avatar {
   width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto;

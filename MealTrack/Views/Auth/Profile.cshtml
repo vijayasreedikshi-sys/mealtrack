@@ -21,6 +21,10 @@
           }
           <dt class="col-5 text-muted fw-normal">Member since</dt><dd class="col-7 mb-0">@Fmt.Date(Model.CreatedAt, "dd MMM yyyy")</dd>
         </dl>
+        <hr>
+        <form method="post" action="/logout" asp-antiforgery="true">
+          <button class="btn btn-outline-danger w-100" type="submit">@Ui.Icon("log-out") Log out</button>
+        </form>
       </div>
     </div>
   </div>
